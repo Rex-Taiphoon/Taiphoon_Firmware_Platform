@@ -2,13 +2,13 @@
 
 React + TypeScript 的 MORAKOT 線上設定與雲端編譯平台。GitHub Pages 提供介面，GitHub App + 無伺服器 API 保存設定並觸發固定 Actions，GitHub Releases 保存結果。無須本地 WSL 或常駐編譯機。
 
-目前已完成本機平台、API 與雲端流程範本，**尚未部署，也未執行真實韌體編譯或建立 Release**。使用者已同意先進行 GitHub Actions 編譯驗證；目前平台 repository 仍無法存取。四個 adapter 已依你的 repository 定義實作，尚未完成雲端驗收；INAV 等待 MORAKOT 定義。不能把本機示範下載當成韌體。
+目前已完成本機平台、API 與雲端流程範本，**ArduPilot / Morakot Copter 已通過真實 GitHub Actions 編譯及產物核對**，可從 [成功工作](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37111909948) 下載 `firmware-37111909948-1` artifact（保留一天）。程式已上傳到私人平台 repository；尚未部署 Pages／API，也未建立 Release。其餘 adapter 與 INAV 狀態見下表，詳細結果見 [驗證紀錄](docs/verification.md)。不能把本機示範下載當成韌體。
 
 ## 已接入的目標
 
 | 韌體 | 已核對來源 | 可修改設定 | 狀態 |
 | --- | --- | --- | --- |
-| ArduPilot | `Rex-Taiphoon/ardupilot` master，Morakot hwdef | Copter / Plane / Rover、第二組 OSD 預設值 | adapter 已實作，未雲端驗收 |
+| ArduPilot | `Rex-Taiphoon/ardupilot` master，Morakot hwdef | Copter / Plane / Rover、第二組 OSD 預設值 | Copter 已雲端編譯及產物核對；Plane / Rover 待驗收 |
 | PX4 | `Rex-Taiphoon/PX4-Autopilot` dev-morakot | uXRCE-DDS 與 MSP OSD 模組 | adapter 已實作，未雲端驗收 |
 | Betaflight | `Rex-Taiphoon/betaflight` master + `Rex-Taiphoon/config` MORAKOT | GPS、蜂鳴器 | adapter 已實作，未雲端驗收 |
 | AM32 | `Rex-Taiphoon/AM32` Morakot_4in1_ESC-dev | G071 / L431 CAN 硬體版本、序列遙測 | adapter 已實作，未雲端驗收 |
@@ -116,7 +116,7 @@ pnpm api:build
 
 本機測試涵蓋設定驗證、固定 adapter 命令、權限、OAuth state、憑證錯誤遮蔽、保存／dispatch 冪等、逾時查回、工作狀態與 Release 版本驗證。這些是 mock 測試，不能替代真實工具鏈建置及硬體測試。
 
-詳細檢查與尚未驗證的項目見 [本機驗證紀錄](docs/verification.md)。
+詳細檢查與尚未驗證的項目見 [驗證紀錄](docs/verification.md)。
 
 正式端到端驗收需要：平台 repository 可存取、GitHub App、API 託管、Pages 設定，以及使用者明確確認一次雲端編譯與發布。INAV 另外需要 repository、固定 source SHA、MORAKOT target 與既有建置入口。以上條件尚未具備時，不能宣稱平台已正式上線或五個韌體都已可下載。
 

@@ -10,6 +10,8 @@
 
 沿用現有 workflow 的 `ardupilot/ardupilot-dev-chibios:v0.2.0` 與 GCC 10 環境，記錄實際 image digest。使用 `./waf configure --board Morakot --default-parameters=platform-defaults.parm`，接 `./waf copter`、`plane` 或 `rover`。設定只映射 `OSD_TYPE2` 0 / 5；保留原定義其餘內容。下載 `.apj`、`.bin`，不建置或刷寫 bootloader。
 
+Morakot Copter 已於 2026-10-03 通過 [GitHub Actions 工作 37111909948](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37111909948)，實際 GCC 10.2.1、board ID 1210，設定 `osdType2=5`。已下載 artifact 並驗證設定、來源、workflow 版本、APJ/BIN SHA-256 及 APJ 解壓後與 BIN 一致。Plane / Rover、OSD 停用設定及硬體運作尚未驗收；完整版本與雜湊見 [驗證紀錄](verification.md)。
+
 ## PX4
 
 - [MORAKOT board](https://github.com/Rex-Taiphoon/PX4-Autopilot/blob/2883a8fb033410b1ca16240be288e1544b193bb0/boards/taiphoon/morakot/default.px4board)

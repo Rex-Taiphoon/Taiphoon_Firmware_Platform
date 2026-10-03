@@ -6,7 +6,7 @@ export type Target = {
   available: boolean; note: string; fields: Field[];
 };
 export const targets: Target[] = [
-  { id: 'ardupilot', name: 'ArduPilot', board: 'Morakot', description: 'Copter · Plane · Rover', repository: 'Rex-Taiphoon/ardupilot', ref: 'master', sourceSha: 'abc8df0d405dc2b39663e0c800bc729a0287bf53', definitionPath: 'libraries/AP_HAL_ChibiOS/hwdef/Morakot/hwdef.dat', available: true, note: '已核對 hwdef；雲端編譯待驗收', fields: [
+  { id: 'ardupilot', name: 'ArduPilot', board: 'Morakot', description: 'Copter · Plane · Rover', repository: 'Rex-Taiphoon/ardupilot', ref: 'master', sourceSha: 'abc8df0d405dc2b39663e0c800bc729a0287bf53', definitionPath: 'libraries/AP_HAL_ChibiOS/hwdef/Morakot/hwdef.dat', available: true, note: 'Copter 雲端編譯已驗證；Plane / Rover 待驗收', fields: [
     { key: 'vehicle', label: '載具韌體', kind: 'choice', default: 'copter', choices: [{ value: 'copter', label: 'Copter 多旋翼' }, { value: 'plane', label: 'Plane 固定翼' }, { value: 'rover', label: 'Rover 地面載具' }] },
     { key: 'osdType2', label: '第二組 OSD 預設值', kind: 'choice', default: '5', choices: [{ value: '5', label: 'MSP DisplayPort（原始定義）' }, { value: '0', label: '停用' }] },
   ] },

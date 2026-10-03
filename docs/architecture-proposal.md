@@ -1,6 +1,6 @@
 # 線上設定與雲端編譯平台：第一版提案
 
-狀態：React + TypeScript、GitHub App + 無伺服器 API 已由使用者確認，並完成本地實作與流程範本。尚未部署或進行真實雲端驗收。實際操作文件見 README.md。
+狀態：React + TypeScript、GitHub App + 無伺服器 API 已由使用者確認，並完成本地實作與流程範本。已將程式上傳至私人平台 repository，ArduPilot / Morakot Copter 已通過不發布 Release 的真實雲端編譯、下載及產物核對。尚未部署 Pages／API；實際結果見 docs/verification.md，操作文件見 README.md。
 
 ## 現況與範圍
 
@@ -74,7 +74,7 @@ adapter 接受已驗證的設定檔與受控目標，輸出到指定產物目錄
 
 ## 待確認事項
 
-1. 確認新平台 repository 可存取；目前公開 API 回傳 404，連接器亦未列出，沒有進行遠端修改。
+1. 私人平台 repository 已透過電腦既有 Git 登入確認可存取並完成程式上傳；GitHub 連接器仍只涵蓋其選定 repositories，後續可另將平台 repo 加入。
 2. 設定 GitHub App 與 API 託管供應商、Pages 網址，經明確確認後進行部署及一次真實端到端編譯驗收。
 3. 提供 INAV repository、固定原始碼 SHA 與 MORAKOT target，接入第五個 adapter。
 
