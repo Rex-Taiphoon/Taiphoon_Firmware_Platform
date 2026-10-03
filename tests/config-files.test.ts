@@ -5,11 +5,24 @@ import { configFor, validateConfig, canonicalConfig, releaseIdentity } from '../
 import { savedFixture } from './fixtures.ts';
 
 test('三平台提供的實際配置可以保存，修改會改變版本摘要',()=>{
-  for (const id of ['ardupilot','px4','betaflight'] as const) {
+  for (const id of ['ardupilot','px4','betaflight','am32'] as const) {
     const c = {...configFor(id),files:templateData[id]};
     assert.deepEqual(validateConfig(c).files,templateData[id]);
     assert.notEqual(canonicalConfig(c),canonicalConfig({...c,files:{...c.files,[Object.keys(c.files)[0]]:Object.values(c.files)[0]+'\n# comment\n'}}));
   }
+});
+test('完整板級目錄仍拒絕 CMake 執行、C 外部引用、Kconfig 路徑与 linker 外部輸入',()=>{
+  for (const [path,suffix] of [
+    ['src/CMakeLists.txt','\nexecute_process(COMMAND bash -c id)'],
+    ['src/init.c','\n#include "/etc/passwd"'],
+    ['src/init.c','\n#include HEADER_PATH'],
+    ['src/init.c','\n#inc\\\nlude "/etc/passwd"'],
+    ['nuttx-config/Kconfig','\nsource "/etc/private"'],
+    ['nuttx-config/scripts/script.ld','\nINPUT(/etc/private)'],
+    ['nuttx-config/nsh/defconfig','\nCONFIG_ARCH_OPTIMIZATION="-fplugin=/tmp/plugin.so"'],
+  ]) assert.throws(()=>validateConfig({...configFor('px4'),files:{[path]:templateData.px4[path]+suffix}}),path);
+  const prototype=JSON.parse(templateData.px4['firmware.prototype']);
+  assert.throws(()=>validateConfig({...configFor('px4'),files:{'firmware.prototype':JSON.stringify({...prototype,image_maxsize:1966080})}}));
 });
 test('阻止 init shell、路徑穿越、工具鏈替換與 config.h 引用主機檔案',()=>{
   for (const [id,path,text] of [

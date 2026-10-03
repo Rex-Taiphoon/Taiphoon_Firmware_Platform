@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FileTree } from './FileTree.tsx';
 import { Client, apiUrl, demoAllowed } from './client.ts';
 import { targets, targetFor, type FirmwareId } from '../shared/catalog.ts';
 import { defaultConfig, configFor, validateConfig, canonicalConfig, requestId, type Config, type SavedRequest, type BuildStatus, type Phase } from '../shared/domain.ts';
@@ -19,15 +20,16 @@ export function App() {
   const pendingSave = useRef<{ id: string; config: string } | undefined>(undefined);
   const popup = useRef<Window | null>(null), loginTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const target = targetFor(config.target);
+  const filesComplete = !target.editableFiles || target.editableFiles.every(p=>config.files?.[p]!==undefined);
   const dirty = saved && JSON.stringify(saved.config) !== JSON.stringify(config);
   const [fileTab,setFileTab] = useState('');
-  useEffect(() => { setFileTab(target.editableFiles?.[0] || ''); },[target.id]);
+  useEffect(() => { setFileTab(target.editableFiles?.find(p=>target.definitionPath.endsWith(p)) || target.editableFiles?.[0] || ''); },[target.id]);
   useEffect(() => {
-    if (!authenticated || !target.editableFiles || config.files || demo) return;
+    if (!authenticated || !target.editableFiles || filesComplete || demo) return;
     let cancelled = false;
-    client.current.call<{files:Record<string,string>}>(`/templates/${target.id}`).then(r => { if (!cancelled) setConfig(c=>({...c,files:r.files})); }).catch(e=>{if(!cancelled)setError(e.message);});
+    client.current.call<{files:Record<string,string>}>(`/templates/${target.id}`).then(r => { if (!cancelled) setConfig(c=>({...c,files:{...r.files,...c.files}})); }).catch(e=>{if(!cancelled)setError(e.message);});
     return ()=>{cancelled=true;};
-  },[actor,target.id,Boolean(config.files),demo]);
+  },[actor,target.id,filesComplete,demo]);
   const active = status && !['saved', 'success', 'failed', 'cancelled'].includes(status.phase);
   const authenticated = demo || Boolean(actor && client.current.session);
 
@@ -90,10 +92,10 @@ export function App() {
           <dl className="source"><div><dt>硬體目標</dt><dd>{target.board}</dd></div><div><dt>來源分支</dt><dd>{target.ref || '尚未提供'}</dd></div><div><dt>原始碼版本</dt><dd><code title={target.sourceSha}>{target.sourceSha.slice(0, 12) || '待確認'}</code></dd></div></dl>
           {target.available ? <fieldset disabled={busy || Boolean(active)}>{target.fields.map(f => f.kind === 'choice' ? <label className="field" key={f.key}><span>{f.label}</span><select aria-label={f.label} value={String(config.options[f.key])} onChange={e => setConfig({ ...config, options: { ...config.options, [f.key]: e.target.value } })}>{f.choices?.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select></label> : <label className="toggle-row" key={f.key}><span>{f.label}</span><input type="checkbox" checked={Boolean(config.options[f.key])} onChange={e => setConfig({ ...config, options: { ...config.options, [f.key]: e.target.checked } })} /><span className="toggle" aria-hidden="true" /></label>)}</fieldset> : <div className="pending"><strong>等待 MORAKOT target 定義</strong><p>提供 INAV repository 與定義後，即可接入獨立編譯流程。現在不能送出此目標。</p></div>}
           {target.definition && <p className="note">硬體定義另固定於 <code>{target.definition.repository}@{target.definition.sha.slice(0, 10)}</code></p>}
-          {target.editableFiles && <div className="file-editor"><div className="file-tabs" role="tablist" aria-label="配置檔案">{target.editableFiles.map(path=><button role="tab" aria-selected={fileTab===path} className={fileTab===path?'selected':''} key={path} onClick={()=>setFileTab(path)}>{path}</button>)}</div>{config.files ? <><label className="file-label" htmlFor="config-file">{fileTab} · UTF-8</label><textarea id="config-file" spellCheck={false} value={config.files[fileTab] || ''} disabled={busy || Boolean(active)} onChange={e=>setConfig({...config,files:{...config.files,[fileTab]:e.target.value}})} /><p className="note">功能選項優先於檔案內對應定義；保存時會檢查路徑與指令限制。</p></> : <p className="note">登入後讀取私人 repository 的基礎配置。</p>}</div>}
+          {target.editableFiles && <div className="file-editor"><div className="directory-heading"><strong>{target.id==='px4'?'boards/morakot/v6/':target.id==='ardupilot'?'hwdef/Morakot/':target.id==='betaflight'?'configs/MORAKOT/':'AM32 / Morakot 硬體定義'}</strong><span>{target.editableFiles.length} 個檔案</span></div><div className="file-workspace"><FileTree paths={target.editableFiles} selected={fileTab} onSelect={setFileTab}/><div className="file-content">{config.files ? <><label className="file-label" htmlFor="config-file">{fileTab} · UTF-8</label><textarea id="config-file" aria-label={fileTab} spellCheck={false} value={config.files[fileTab] || ''} disabled={busy || Boolean(active)} onChange={e=>setConfig({...config,files:{...config.files,[fileTab]:e.target.value}})} /></> : <p className="note">登入後讀取私人 repository 的完整配置目錄。</p>}</div></div><p className="note">目錄內所有文字配置均可選取編輯，保存時一起建立版本快照。功能選項優先於檔案內對應定義；不允許任意 shell、外部檔案引用或更換建置工具。</p>{target.id==='px4'&&fileTab.includes('bootloader')&&<p className="note">bootloader 檔案會一併保存；目前工作編譯 default 韌體，此檔只影響 bootloader 目標。</p>}{target.id==='am32'&&<p className="note">AM32 的 Morakot 定義位於共用 Inc/targets.h，沒有獨立的板級目錄。</p>}</div>}
           <details><summary>查看將保存的設定 JSON</summary><pre>{JSON.stringify(config, null, 2)}</pre></details>
           <p className="privacy">公開 repository 的設定、編譯紀錄與結果可能公開。請勿輸入密碼、金鑰或其他秘密。</p>
-          <div className="actions"><button className="secondary" disabled={!authenticated || busy || Boolean(active) || !target.available || Boolean(target.editableFiles && !config.files && !demo)} onClick={save}>{busy ? '處理中…' : saved && !dirty ? '另存新版本' : '保存設定'}</button><button className="primary" disabled={!authenticated || busy || !saved || Boolean(dirty) || Boolean(active) || status?.phase === 'success' || status?.phase === 'cancelled' || (status?.phase === 'failed' && !status.canRetryDispatch) || !target.available} onClick={dispatch}>{demo ? '啟動本機流程示範' : '開始雲端編譯並發布'} <span>→</span></button></div>
+          <div className="actions"><button className="secondary" disabled={!authenticated || busy || Boolean(active) || !target.available || Boolean(!filesComplete && !demo)} onClick={save}>{busy ? '處理中…' : saved && !dirty ? '另存新版本' : '保存設定'}</button><button className="primary" disabled={!authenticated || busy || !saved || Boolean(dirty) || Boolean(active) || status?.phase === 'success' || status?.phase === 'cancelled' || (status?.phase === 'failed' && !status.canRetryDispatch) || !target.available} onClick={dispatch}>{demo ? '啟動本機流程示範' : '開始雲端編譯並發布'} <span>→</span></button></div>
           {!authenticated && <p className="note">登入後即可保存設定並提交編譯。</p>}{dirty && <p className="note">設定已變更，請先保存新的版本。</p>}
         </div>
         <div className="build panel"><div className="panel-head"><div><p className="eyebrow">03 / BUILD & DOWNLOAD</p><h2>{saved ? targetFor(saved.config.target).name + ' 編譯工作' : '編譯工作'}</h2></div><span className={`status-dot ${status?.phase === 'success' ? 'green' : ''}`} /></div>

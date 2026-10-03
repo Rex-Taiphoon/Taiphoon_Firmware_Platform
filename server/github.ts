@@ -21,7 +21,7 @@ export class GitHub {
     return response.status === 204 ? undefined as T : await response.json() as T;
   }
   async manifest(repository: string, id: number, maxBytes = 65536): Promise<unknown> {
-    if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 131072) throw new Error('Invalid manifest limit');
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 196608) throw new Error('Invalid manifest limit');
     const r = await this.transport(`https://api.github.com/repos/${repository}/releases/assets/${id}`, {
       headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/octet-stream', 'User-Agent': 'Taiphoon-Firmware-Platform', 'X-GitHub-Api-Version': '2026-03-10' }, signal: AbortSignal.timeout(20000),
     });

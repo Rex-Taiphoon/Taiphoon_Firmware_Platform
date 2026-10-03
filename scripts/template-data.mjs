@@ -1,4 +1,8 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-const paths = {ardupilot:['hwdef.dat','hwdef-bl.dat','defaults.parm'],px4:['default.px4board','init/rc.board_defaults','init/rc.board_sensors'],betaflight:['config.h']};
-const data = Object.fromEntries(Object.entries(paths).map(([target,files])=>[target,Object.fromEntries(files.map(path=>[path,readFileSync(`templates/${target}/${path}`,'utf8').replace(/\r\n/g,'\n')]))]));
+import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
+const data = Object.fromEntries(['ardupilot','px4','betaflight','am32'].map(target=>[target,Object.fromEntries(readdirSync(`templates/${target}`,{recursive:true}).map(String).filter(path=>statSync(`templates/${target}/${path}`).isFile()).sort().map(path=>[path.replaceAll('\\','/'),readFileSync(`templates/${target}/${path}`,'utf8').replace(/\r\n/g,'\n')]))]));
 writeFileSync('server/templates-data.ts', '/* Private API data. Never import into the frontend. */\nexport const templateData: Record<string, Record<string,string>> = '+JSON.stringify(data,null,2)+';\n');
+const files=Object.fromEntries(Object.entries(data).map(([target,values])=>[target,Object.keys(values)]));
+const includes=Object.fromEntries(Object.entries(data).map(([target,values])=>[target,[...new Set(Object.values(values).flatMap(text=>[...text.replace(/\/\*[\s\S]*?\*\//g,'').matchAll(/^\s*#\s*include\s*[<"]([^>"\n]+)[>"]/gm)].map(m=>m[1])))].sort()]));
+const locked=Object.fromEntries(Object.entries(data.px4).filter(([path])=>path.endsWith('defconfig')||path.endsWith('px4board')).map(([path,text])=>[path,text.split('\n').filter(line=>/^CONFIG_(?:BOARD_(?:TOOLCHAIN|ARCHITECTURE|ROMFSROOT|LINKER_SCRIPT)|ARCH_(?:CHIP|BOARD_CUSTOM)|INIT_ENTRYPOINT)/.test(line))]));
+writeFileSync('shared/board-files.ts','/* File names and safe header references only; contains no board implementation. */\nexport const boardFiles: Record<string,string[]> = '+JSON.stringify(files,null,2)+';\nexport const allowedHeaders: Record<string,string[]> = '+JSON.stringify(includes,null,2)+';\nexport const lockedPx4Config: Record<string,string[]> = '+JSON.stringify(locked,null,2)+';\n');
+console.log(Object.fromEntries(Object.entries(data).map(([target,values])=>[target,{files:Object.keys(values).length,bytes:Buffer.byteLength(JSON.stringify(values))}])));

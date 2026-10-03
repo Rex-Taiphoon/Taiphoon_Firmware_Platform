@@ -1,3 +1,4 @@
+import { boardFiles } from './board-files.ts';
 export type FirmwareId = 'ardupilot' | 'px4' | 'betaflight' | 'inav' | 'am32';
 export type Field = { key: string; label: string; kind: 'boolean' | 'choice'; choices?: { value: string; label: string }[]; default: string | boolean };
 export type Target = {
@@ -32,6 +33,7 @@ export const targets: Target[] = [
     { key: 'serialTelemetry', label: '包含序列遙測', kind: 'boolean', default: true },
   ] },
 ];
+for (const target of targets) if (boardFiles[target.id]) target.editableFiles = boardFiles[target.id];
 export function targetFor(id: unknown): Target {
   const target = targets.find(t => t.id === id);
   if (!target) throw new Error('不支援的韌體目標');

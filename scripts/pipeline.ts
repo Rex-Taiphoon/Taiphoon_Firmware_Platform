@@ -19,7 +19,7 @@ const github = new GitHub(process.env.GITHUB_TOKEN || '');
 function digest(path: string) { return createHash('sha256').update(readFileSync(path)).digest('hex'); }
 async function snapshot(): Promise<SavedRequest> {
   const file = await github.call(`/repos/${repository}/contents/requests/${id}.json?ref=${configSha}`);
-  if (file.encoding !== 'base64' || file.size > 262144) throw new Error('無效的設定快照');
+  if (file.encoding !== 'base64' || file.size > 524288) throw new Error('無效的設定快照');
   const s = JSON.parse(Buffer.from(file.content, 'base64').toString()) as Snapshot;
   const c = validateConfig(s.config), target = targetFor(c.target);
   if (process.env.EXPECTED_TARGET && c.target !== process.env.EXPECTED_TARGET) throw new Error('此工作流程不接受其他平台的設定');

@@ -48,7 +48,9 @@ export function validateConfig(value: unknown): Config {
   }
   let files: Record<string, string> | undefined;
   try { if (c.files !== undefined) files = validateFiles(target.id, c.files); } catch (e) { throw new ValidationError((e as Error).message); }
-  return { schemaVersion: 1, target: target.id, options, ...(files ? { files } : {}) };
+  const result: Config = { schemaVersion: 1, target: target.id, options, ...(files ? { files } : {}) };
+  if (new TextEncoder().encode(JSON.stringify(result)).length > 196608) throw new ValidationError('完整配置快照超過 192 KiB');
+  return result;
 }
 export function requestId(value: unknown): string {
   if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) throw new ValidationError('無效的 request ID');

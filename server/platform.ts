@@ -13,7 +13,7 @@ export class Platform {
   private async file(path: string): Promise<{ value: any; blob: string } | undefined> {
     try {
       const f = await this.github.call(this.path(`contents/${path}?ref=${encodeURIComponent(this.env.GITHUB_CONFIG_BRANCH)}`));
-      if (f.encoding !== 'base64' || f.size > 262144) throw new PlatformError(422, '無效的設定記錄');
+      if (f.encoding !== 'base64' || f.size > 524288) throw new PlatformError(422, '無效的設定記錄');
       return { value: JSON.parse(Buffer.from(f.content, 'base64').toString()), blob: f.sha };
     } catch (e) { if (e instanceof GitHubError && e.status === 404) return undefined; throw e; }
   }
@@ -112,10 +112,10 @@ export class Platform {
       if (release.draft) return { ...status, phase: 'failed', message: 'Release 尚未完成發布' };
       const manifestAsset = release.assets.find((a: any) => a.name === 'provenance.json');
       const configAsset = release.assets.find((a: any) => a.name === 'config.json');
-      if (!manifestAsset || manifestAsset.size > 65536 || !configAsset || configAsset.size > 131072) throw new ValidationError('Release 缺少版本資訊或設定快照');
+      if (!manifestAsset || manifestAsset.size > 65536 || !configAsset || configAsset.size > 196608) throw new ValidationError('Release 缺少版本資訊或設定快照');
       const digest = createHash('sha256').update(canonicalConfig(saved.config)).digest('hex');
       const manifest = verifyProvenance(await this.github.manifest(this.repository, manifestAsset.id), saved, run, digest);
-      if (canonicalConfig(await this.github.manifest(this.repository, configAsset.id, 131072)) !== canonicalConfig(saved.config)) throw new ValidationError('Release 設定快照內容不一致');
+      if (canonicalConfig(await this.github.manifest(this.repository, configAsset.id, 196608)) !== canonicalConfig(saved.config)) throw new ValidationError('Release 設定快照內容不一致');
       const assets = manifest.assets.map(a => {
         const actual = release.assets.find((r: any) => r.name === a.name);
         if (!actual || actual.size !== a.size || (actual.digest && actual.digest !== `sha256:${a.sha256}`)) throw new ValidationError('Release 資產缺失或雜湊不符');

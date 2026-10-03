@@ -49,7 +49,7 @@ export function applySettings(config: Config, source: string, definition: string
     cpSync('templates/px4',dir,{recursive:true});
     for (const [name,text] of Object.entries(c.files ?? {})) writeFileSync(join(dir,name),text);
     const prototype = JSON.parse(readFileSync(join(dir,'firmware.prototype'),'utf8'));
-    prototype.description = 'Taiphoon Morakot v6 firmware (bootloader board ID 1105)'; prototype.summary = 'MORAKOT-V6';
+    if (!c.files?.['firmware.prototype']) { prototype.description = 'Taiphoon Morakot v6 firmware (bootloader board ID 1105)'; prototype.summary = 'MORAKOT-V6'; }
     writeFileSync(join(dir,'firmware.prototype'),JSON.stringify(prototype,null,2));
     const path = join(dir, 'default.px4board');
     let text = readFileSync(path, 'utf8');
@@ -61,6 +61,7 @@ export function applySettings(config: Config, source: string, definition: string
   } else if (c.target === 'betaflight') {
     mkdirSync(join(definition,'configs/MORAKOT'),{recursive:true});
     cpSync('templates/betaflight',join(definition,'configs/MORAKOT'),{recursive:true});
+    for (const [name,text] of Object.entries(c.files ?? {})) writeFileSync(join(definition,'configs/MORAKOT',name),text);
     const path = join(definition, 'configs/MORAKOT/config.h');
     writeFileSync(path,c.files?.['config.h'] ?? readFileSync(path,'utf8'));
     const groups: Record<string,string[]> = {
@@ -78,6 +79,6 @@ export function applySettings(config: Config, source: string, definition: string
     if (!c.options.beeper) text += '\n#undef BEEPER_PIN\n';
     writeFileSync(post,text);
   } else if (c.target === 'am32') {
-    const path = join(source, 'Inc/targets.h'); writeFileSync(path, amendAm32(readFileSync(path, 'utf8'), String(c.options.variant), Boolean(c.options.serialTelemetry)));
+    const path = join(source, 'Inc/targets.h'); writeFileSync(path, amendAm32(c.files?.['Inc/targets.h'] ?? readFileSync(path, 'utf8'), String(c.options.variant), Boolean(c.options.serialTelemetry)));
   } else throw new Error('INAV 尚未接入');
 }
