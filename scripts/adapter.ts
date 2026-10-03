@@ -69,6 +69,9 @@ export function applySettings(config: Config, source: string, definition: string
     const headers = ['src/main/target/common_pre.h','src/main/target/common_post.h'].map(p=>readFileSync(join(source,p),'utf8')).join('\n')+readFileSync(path,'utf8');
     const macros = [...new Set(headers.match(/\b(?:USE|ENABLE)_[A-Z0-9_]+\b/g) ?? [])];
     for (const [key,prefixes] of Object.entries(groups)) if (!c.options[key]) for (const macro of macros.filter(m=>prefixes.some(p=>m===p||m.startsWith(p+'_')||m===p.replace('USE_','ENABLE_')||m.startsWith(p.replace('USE_','ENABLE_')+'_')))) text += `\n#undef ${macro}\n${macro.startsWith('ENABLE_') ? '#define '+macro+' 0\n' : ''}`;
+    // beeper.c supplies NONE itself when the feature is absent. A board pin
+    // retained from config.h would conflict with that upstream fallback.
+    if (!c.options.beeper) text += '\n#undef BEEPER_PIN\n';
     writeFileSync(post,text);
   } else if (c.target === 'am32') {
     const path = join(source, 'Inc/targets.h'); writeFileSync(path, amendAm32(readFileSync(path, 'utf8'), String(c.options.variant), Boolean(c.options.serialTelemetry)));

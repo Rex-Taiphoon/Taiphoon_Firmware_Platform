@@ -14,7 +14,7 @@ export const targets: Target[] = [
     { key: 'osdType2', label: '第二組 OSD 預設值', kind: 'choice', default: '5', choices: [{ value: '5', label: 'MSP DisplayPort（原始定義）' }, { value: '0', label: '停用' }] },
   ] },
   { id: 'px4', name: 'PX4', board: 'morakot_v6_default', description: '1.18.0-beta1 · MORAKOT v6', repository: 'Rex-Taiphoon/PX4-Autopilot', ref: '186ad6d691', sourceSha: '186ad6d6914456bdb39f196c3069e9bef995bc3a', definitionPath: 'boards/morakot/v6/default.px4board', version: '1.18.0-beta1-6-g186ad6d691', workflow: 'px4.yml', editableFiles: ['default.px4board', 'init/rc.board_defaults', 'init/rc.board_sensors'], available: true, note: '使用附件 Morakot v6；保留原 bootloader board ID 1105', fields: [
-    { key: 'dds', label: '包含 uXRCE-DDS 模組', kind: 'boolean', default: true },
+    { key: 'dds', label: '包含 uXRCE-DDS 模組（可能超出刷寫容量）', kind: 'boolean', default: false },
     { key: 'osd', label: '包含 ATXXXX OSD 驅動', kind: 'boolean', default: false },
     { key: 'buildType', label: '編譯模式', kind: 'choice', default: 'Release', choices: [{ value: 'Release', label: 'Release 最佳化' }, { value: 'Debug', label: 'Debug 除錯' }] },
     { key: 'lto', label: '連結最佳化 LTO（縮小韌體）', kind: 'boolean', default: true },
