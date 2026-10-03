@@ -61,6 +61,8 @@ profiles.push({...ardu,profileId:'ardupilot-4.7.0-morakot-r1',repository:'ArduPi
   vehicleVersions:{copter:'4.7.0',plane:'4.7.0',rover:'4.7.0',sub:'4.7.0'},
   templateKey:'ardupilot-4.7',templateRevision:templateRevisions['ardupilot-4.7'],editableFiles:boardFiles['ardupilot-4.7'],
   description:'4.7.0 · Morakot',note:'官方 Copter-4.7.0 固定來源；Morakot 配置獨立保存，Copter 雲端驗證後仍需實機驗收'});
+const ardu470=profiles.find(t=>t.profileId==='ardupilot-4.7.0-morakot-r1')!;ardu470.available=false;
+profiles.push({...ardu470,available:true,profileId:'ardupilot-4.7.0-morakot-r2',templateKey:'ardupilot-4.7-r2',templateRevision:templateRevisions['ardupilot-4.7-r2'],editableFiles:boardFiles['ardupilot-4.7-r2'],note:'官方 4.7.0 固定來源；hwdef 已遷移外部羅盤配置名稱，Copter 雲端驗證後仍需實機驗收'});
 // New profiles add an explicit output target without changing historical profile digests.
 for(const prior of profiles.filter(t=>t.id==='px4')){
   prior.available=false;
