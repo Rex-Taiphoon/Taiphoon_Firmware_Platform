@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "requestId": "bbb7bab6-4daf-4435-b93d-74737b3f011e",
+  "actor": "Rex-Taiphoon",
+  "createdAt": "2026-10-03T09:01:25.867Z",
+  "sourceRepository": "Rex-Taiphoon/ardupilot",
+  "sourceSha": "abc8df0d405dc2b39663e0c800bc729a0287bf53",
+  "config": {
+    "schemaVersion": 1,
+    "target": "ardupilot",
+    "options": {
+      "vehicle": "copter",
+      "osdType2": "5"
+    }
+  }
+}
