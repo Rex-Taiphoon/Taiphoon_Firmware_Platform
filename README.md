@@ -8,7 +8,7 @@ React + TypeScript 的 Morakot 線上配置與雲端編譯平台。正式操作�
 - [公開前端資產 repository](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Pages)：僅前端、品牌圖、部署 workflow。
 - [私人平台 repository](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform)：API、受控模板、配置快照、Actions、Releases。
 - API：`https://taiphoon-firmware-api.taiphoon-firmware-platform.workers.dev`，Cloudflare Workers。
-- GitHub App：`taiphoon-firmware-platform`。已建立；使用前須確認只安裝到私人平台 repo，使用者也須有該 repo 寫入權限。
+- GitHub App：`taiphoon-firmware-platform`。使用者已安裝並確認登入與保存配置成功；限定私人平台 repo，使用者也須有該 repo 寫入權限。
 
 部署及雲端驗證結果見 [verification.md](docs/verification.md)。編譯通過不等同硬體刷寫／飛行驗收。
 
@@ -16,22 +16,22 @@ React + TypeScript 的 Morakot 線上配置與雲端編譯平台。正式操作�
 
 | 平台 | 配置編輯器 | 編譯選項 |
 | --- | --- | --- |
-| ArduPilot | hwdef.dat、hwdef-bl.dat、defaults.parm | Copter／Plane／Rover／Sub、OSD、Lua、OSD_TYPE2 |
-| PX4 | default.px4board、init/rc.board_defaults、init/rc.board_sensors | DDS、ATXXXX OSD、Release／Debug、LTO |
-| Betaflight | config.h | GPS、蜂鳴器、OSD、Blackbox、遙測 |
-| AM32 | 暫不自由編輯檔案 | G071／L431 CAN、序列遙測；adapter 尚待雲端驗收 |
+| ArduPilot | hwdef/Morakot 完整文字目錄：3 檔 | Copter／Plane／Rover／Sub、OSD、Lua、OSD_TYPE2 |
+| PX4 | boards/morakot/v6 完整文字目錄：24 檔，含 init、src、NuttX、CMake、linker | DDS、ATXXXX OSD、Release／Debug、LTO |
+| Betaflight | configs/MORAKOT：config.h、config.c | GPS、蜂鳴器、OSD、Blackbox、遙測 |
+| AM32 | 共用 Inc/targets.h 中的 Morakot 定義 | G071／L431 CAN、序列遙測；G071 已雲端驗收 |
 | INAV | 等待 Morakot 定義 | 禁止提交 |
 
 來源固定完整 SHA，詳見 [targets.md](docs/targets.md)。此 ArduPilot 來源的 Copter／Plane／Rover 為 4.6.3，Sub 為 **4.6.0-dev**，檔名與 Release 依載具標記正確版本。Betaflight 使用附件配置及同版官方固定來源，原 ZIP 的完整 source SHA 尚未確認，不能宣稱二進位重現原 ZIP。
 
 功能選項優先於檔案中對應定義。關閉 OSD 會移除程式／驅動，不只是改預設參數。PX4 Release 使用 MinSizeRel，LTO 預設啟用，DDS 預設停用；Debug、停用最佳化或增加太多模組可能超過容量，流程會失敗而不發布。Betaflight 停用遙測也會停用依賴 SmartPort 的 FPort 接收協定。
 
-路徑、Morakot MCU、board ID 受控。init 僅接受數值參數與指定驅動 start；禁止 shell 展開、管線、重導向或任意程式。hwdef 禁止 include／ROMFS／環境修改，config.h 禁止引用主機檔案。單檔最多 32768 字元，提交 body 最多 128 KiB；不要保存密碼或金鑰。
+路徑、Morakot MCU、board ID 受控。init 僅接受數值參數與指定驅動 start；禁止 shell 展開、管線、重導向或任意程式。hwdef 禁止 include／ROMFS／環境修改，config.h 禁止引用主機檔案。單檔最多 196608 字元，整份配置最多 192 KiB，提交 body 最多 256 KiB；不要保存密碼或金鑰。
 
 ## 使用
 
 1. 在 Pages 使用 GitHub 登入，API 重新檢查 repository 寫入資格，才讀取私人基礎配置。
-2. 選韌體，修改編譯參數與配置；按「保存設定」取得不可變 request ID 與 config commit SHA。
+2. 選韌體，在可展開的 Morakot 目錄樹選取檔案並編輯，調整編譯參數；按「保存設定」取得不可變 request ID 與 config commit SHA。
 3. 按「開始雲端編譯並發布」，查看排隊、驗證、編譯、發布、成功或失敗及 Actions 紀錄。
 4. 成功後只有通過版本與雜湊核對的資產可下載。私人 Release 需要在瀏覽器登入有存取權的 GitHub 帳號。
 
@@ -93,3 +93,13 @@ node scripts/export-pages.mjs
 韌體 workflows 只手動觸發，publish_release 預設 false；只編譯驗證時下載一天保留的 Actions artifact。正常 Pages 按鈕明確傳 true。Release 保留至人類管理，不自動刪除。公開 repo 的設定／紀錄／Release 可能公開；本次私人平台不因 Pages 部署而改變可見性。
 
 目錄：src 前端、shared schema／目標、server API、templates 板级配置、scripts 編譯／發布封裝、tests 關鍵流程。介面與品牌圖參考 [Taiphoon 官網](https://taiphoon.com.tw/)。
+
+## 目錄編輯限制
+
+登入後才讀取完整私人文字配置。保存會把所有檔案一併存入不可變快照；編譯使用這份快照，不能只在網頁預覽修改。舊工作缺少新加入的檔案時，編輯器補上基礎配置並提示另存新版本，原工作仍使用原快照。
+
+PX4 的 bootloader 檔案也可編輯、保存；目前 workflow 編譯的是 default 主韌體，不會重新編譯或發布 bootloader。附件的二進位產物、macOS metadata 與 ZIP 不屬於文字配置，不放進編輯器。
+
+每份配置 JSON 上限為 192 KiB，HTTP 提交上限為 256 KiB。C／C++ 只可引用這個平台既有的 header，不允許主機檔案、任意 pragma 或組合語言嵌入。CMake 允許既有 board 的來源清單、依賴與數值定義；禁止 execute_process、自訂執行命令或工具鏈替換。Kconfig／linker 保留 MCU、建置路徑、board ID 與刷寫容量，不能藉編輯提升容量上限。
+
+Betaflight 停用 Blackbox 也移除依賴它的 USB MSC；停用遙測也移除 FPort、Jeti EX Bus、MAVLink 接收與 CRSF v3 遙測功能，基本 CRSF 接收保留。

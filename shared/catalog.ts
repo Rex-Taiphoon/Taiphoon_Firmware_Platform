@@ -28,7 +28,7 @@ export const targets: Target[] = [
     { key: 'telemetry', label: '包含遙測', kind: 'boolean', default: true },
   ] },
   { id: 'inav', name: 'INAV', board: 'MORAKOT · 待提供', description: '導航飛控 · 預留整合', repository: '', ref: '', sourceSha: '', definitionPath: '', available: false, note: '等待 repository 與 MORAKOT target 定義', fields: [] },
-  { id: 'am32', name: 'AM32', board: 'Morakot 4-in-1 ESC', description: '60A · G071 / L431 CAN', repository: 'Rex-Taiphoon/AM32', ref: 'Morakot_4in1_ESC-dev', sourceSha: 'eec483e880bc9ac2429dafc71368f044dc018892', definitionPath: 'Inc/targets.h', available: true, note: '已核對兩種 ESC 定義；雲端編譯待驗收', fields: [
+  { id: 'am32', name: 'AM32', board: 'Morakot 4-in-1 ESC', description: '60A · G071 / L431 CAN', repository: 'Rex-Taiphoon/AM32', ref: 'Morakot_4in1_ESC-dev', sourceSha: 'eec483e880bc9ac2429dafc71368f044dc018892', definitionPath: 'Inc/targets.h', available: true, note: 'G071 已通過雲端編譯與 Release 驗證；L431 CAN 待驗收', fields: [
     { key: 'variant', label: 'ESC 硬體版本', kind: 'choice', default: 'G071', choices: [{ value: 'G071', label: 'MORAKOT 60A · G071' }, { value: 'L431_CAN', label: 'MORAKOT 60A · L431 CAN' }] },
     { key: 'serialTelemetry', label: '包含序列遙測', kind: 'boolean', default: true },
   ] },

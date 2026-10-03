@@ -1,6 +1,6 @@
 # 線上設定與雲端編譯平台：第一版提案
 
-狀態：Pages 專用公開 repository 與 Cloudflare Workers API 已部署，GitHub App 已建立，三平台配置編輯及獨立編譯／發布流程已實作。App 安裝與正式瀏覽器端到端驗證尚須完成；各雲端工作結果見 verification.md。
+狀態：Pages 專用公開 repository 與 Cloudflare Workers API 已部署，GitHub App 已建立，三平台配置編輯及獨立編譯／發布流程已實作。使用者已確認安裝、登入與讀取私人配置，並從 Pages 保存了真實設定；目錄編輯器的正式瀏覽器操作仍待人工確認；各雲端工作結果見 verification.md。
 
 ## 現況與範圍
 
@@ -30,7 +30,7 @@ Pages 經由無伺服器 API 操作 GitHub。登入交換 client secret 與 sess
 
 App 限定安裝於必要 repository，保存設定需要 Contents write，觸發 workflow 需要 Actions write。installation token 可以進一步限制 repository 與權限。GitHub 的 Contents write 不是設定檔路徑專用權限，因此路徑與允許操作仍由 API 強制限制；若正式原始碼在另一個 repository，應只給必要的唯讀存取。
 
-已選定本方案。提供 Node.js 無伺服器 handler；實際 API 託管供應商、App 與部署資訊仍待設定。
+已選定本方案。提供 Node.js 無伺服器 handler；API 已部署於 Cloudflare Workers；Pages 使用專用公開 repository，編譯平台與 Release 保持私人。
 
 ### 替代：使用者提供 fine-grained token
 
@@ -75,7 +75,7 @@ adapter 接受已驗證的設定檔與受控目標，輸出到指定產物目錄
 ## 待確認事項
 
 1. 私人平台 repository 已透過電腦既有 Git 登入確認可存取並完成程式上傳；GitHub 連接器仍只涵蓋其選定 repositories，後續可另將平台 repo 加入。
-2. 設定 GitHub App 與 API 託管供應商、Pages 網址，經明確確認後進行部署及一次真實端到端編譯驗收。
+2. 使用正式 Pages 保存並送出更多編譯組合，完成實際硬體驗收。部署與 Actions／Release 已取得使用者授權。
 3. 提供 INAV repository、固定原始碼 SHA 與 MORAKOT target，接入第五個 adapter。
 
 ## 官方依據

@@ -1,4 +1,11 @@
 import { inflateSync } from 'node:zlib';
+export function verifyArduPilot(data: Buffer, binary: Buffer, sourceSha: string) {
+  const p=JSON.parse(data.toString('utf8'));
+  const image=inflateSync(Buffer.from(p.image,'base64'),{maxOutputLength:1703936});
+  if(p.magic!=='APJFWv1'||p.board_id!==1210||p.git_identity!==sourceSha.slice(0,8)||image.length!==p.image_size||
+     !Number.isSafeInteger(p.image_maxsize)||p.image_maxsize<=0||p.image_maxsize>1703936||image.length>p.image_maxsize||!image.equals(binary)) throw new Error('ArduPilot 套件來源、board ID、容量或 APJ／BIN 內容不符');
+  return {imageSize:image.length,maxSize:p.image_maxsize};
+}
 export function verifyPx4(data: Buffer, sourceSha: string, version?: string) {
   const p=JSON.parse(data.toString('utf8'));
   const image=inflateSync(Buffer.from(p.image,'base64'),{maxOutputLength:2097152});

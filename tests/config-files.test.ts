@@ -4,7 +4,7 @@ import { templateData } from '../server/templates-data.ts';
 import { configFor, validateConfig, canonicalConfig, releaseIdentity } from '../shared/domain.ts';
 import { savedFixture } from './fixtures.ts';
 
-test('三平台提供的實際配置可以保存，修改會改變版本摘要',()=>{
+test('四平台提供的實際配置可以保存，修改會改變版本摘要',()=>{
   for (const id of ['ardupilot','px4','betaflight','am32'] as const) {
     const c = {...configFor(id),files:templateData[id]};
     assert.deepEqual(validateConfig(c).files,templateData[id]);
