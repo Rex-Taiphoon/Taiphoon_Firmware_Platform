@@ -43,6 +43,13 @@ if (mode === 'prepare') {
   const c = validateConfig(s.config); const target = targetFor(c.target);
   if (s.sourceSha !== target.sourceSha || s.sourceRepository !== target.repository) throw new Error('非受控原始碼');
   verifyCheckout(source, s.sourceSha); if (s.definitionSha) verifyCheckout(definition, s.definitionSha);
+  if (c.target === 'px4') {
+    // The Morakot fork does not publish the upstream release tags. Fetch only the
+    // verified upstream tag; the firmware source remains the pinned Morakot SHA.
+    run('git',['fetch','--depth=1','https://github.com/PX4/PX4-Autopilot.git','refs/tags/v1.18.0-beta1:refs/tags/v1.18.0-beta1'],source);
+    if (run('git',['rev-parse','refs/tags/v1.18.0-beta1'],source,true).trim() !== 'd90ac5b79200c44895c03ee7c284b20b80ecf75d' ||
+        run('git',['describe','--tags','--long','--abbrev=10','--match','v1.18.0-beta1','HEAD'],source,true).trim() !== 'v'+target.version) throw new Error('PX4 上游版本 tag 與來源歷史不一致');
+  }
   applySettings(c, source, definition);
   let toolchain = '';
   if (c.target === 'ardupilot' || c.target === 'px4') {
@@ -70,7 +77,7 @@ if (mode === 'prepare') {
   }
   mkdirSync('output', { recursive: true });
   const directory = c.target === 'ardupilot' ? join(source, 'build/Morakot/bin') : c.target === 'px4' ? join(source, 'build/morakot_v6_default') : join(source, 'obj');
-  const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? name !== 'AP_Bootloader.bin' && /\.(apj|bin)$/.test(name) : c.target === 'px4' ? name === 'morakot_v6_default.px4' : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
+  const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? [`ardu${c.options.vehicle}.apj`,`ardu${c.options.vehicle}.bin`].includes(name) : c.target === 'px4' ? name === 'morakot_v6_default.px4' : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
   if (!files.length) throw new Error('編譯成功但找不到目標產物');
   if (c.target === 'px4') verifyPx4(readFileSync(join(directory,files[0])),s.sourceSha,target.version);
   const identity = releaseIdentity(s,Number(process.env.GITHUB_RUN_ID),Number(process.env.GITHUB_RUN_ATTEMPT));
