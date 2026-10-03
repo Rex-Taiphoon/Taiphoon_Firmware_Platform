@@ -70,6 +70,10 @@ for(const prior of profiles.filter(t=>t.id==='px4')){
     fields:[{key:'buildTarget',label:'編譯內容',kind:'choice',default:'firmware',choices:[{value:'firmware',label:'主韌體 (.px4)'},{value:'bootloader',label:'Bootloader (.bin / .elf)'}]},...prior.fields],
     note:'主韌體與 Bootloader 分別編譯；Bootloader 使用 SWD／DFU，不能當成主韌體安裝'});
 }
+for(const prior of profiles.filter(t=>t.id==='px4' && t.available)){
+ prior.available=false;const templateKey=prior.templateKey+'-bootloader-r3';
+ profiles.push({...prior,available:true,profileId:prior.profileId!.replace(/-r2$/,'-r3'),adapterRevision:'morakot-v2-r3',templateKey,templateRevision:templateRevisions[templateKey],editableFiles:boardFiles[templateKey],note:'主韌體／Bootloader 分別編譯；Bootloader 堆疊與 linker 已修正對齊，使用 SWD／DFU'});
+}
 export function displayVersion(target: Target,variant?:string): string {
   return (target.vehicleVersions?.[variant || ''] || target.version || 'Development').replace(/-\d+-g[0-9a-f]+$/,'');
 }

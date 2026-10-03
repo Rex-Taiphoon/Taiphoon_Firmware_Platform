@@ -38,6 +38,13 @@ test('新 API 僅建立具名版本工作；舊設定可恢復與冪等讀取，
   await assert.rejects(p.save(ID2,configFor('ardupilot')),/選擇韌體版本/);
   await assert.rejects(p.dispatch(ID),/新版/);
 });
+test('重新命名歷史 Release 只改顯示標題，設定、provenance 與下載 tag 仍核對原工作',async()=>{
+  const {gh,p}=setup(),saved=await p.save(ID,configFor('ardupilot',defaultProfileId('ardupilot')));
+  await p.dispatch(ID);gh.publish(saved);gh.release.name='ArduPilot-4.6.3-Morakot-20261004-82';
+  const status=await p.status(ID);
+  assert.equal(status.phase,'success');assert.equal(status.releaseName,gh.release.name);
+  assert.match(status.releaseUrl!,/ArduPilot4.6.3/);assert.match(status.assets![0].url!,/ArduPilot4.6.3/);
+});
 test('日期以真正的 Actions 建立時間及台灣時區決定，流水號和重跑各自識別',async()=>{
   const {p}=setup(),saved=await p.save(ID,configFor('ardupilot',defaultProfileId('ardupilot')));
   const run={run_number:82,created_at:'2026-10-03T16:30:00Z'};

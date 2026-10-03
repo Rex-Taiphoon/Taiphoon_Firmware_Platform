@@ -40,3 +40,12 @@ PX4 1.17.0：官方 annotated tag a5eb12d2ab591251faa009f76b2685b8cc64405d 指�
 AM32 adapter 使用已核對的兩種 Morakot ESC 目標，清除 targets.h 顶端預選的其他板，僅修改選中區塊的序列遙測，不改 dead time、ADC／功率參數。G071 已完成編譯、發布與下载雜湊／HEX checksum 核對；L431 CAN 尚未雲端驗收。固定來源 Inc/version.h 已核對 VERSION_MAJOR=2、VERSION_MINOR=20。新版使用 AM32 2.20 命名，另在 provenance 保存來源 SHA；舊 SHA-labelled profile 留作歷史相容。
 
 INAV 尚缺 Morakot target、固定 source SHA 與編譯入口，不以其他 H743 板代替。
+
+
+## 新增 4.7.0 與 PX4 Bootloader
+
+ArduPilot 4.7.0 固定官方 Copter-4.7.0 commit 1511f27194f1dcc3728270883047bdf022b3fd53；此 commit 各載具版本 header 均為 4.7.0。Morakot 首次移植在 configure 因 HAL_PROBE_EXTERNAL_I2C_COMPASSES 棄用而被拒絕；r2 的獨立模板使用官方規定的 AP_COMPASS_PROBING_ENABLED。4.6.3、4.7.0 r1 原模板保留，失敗工作不建立 Release。
+
+PX4 r3 profile 支援 default／bootloader 兩個白名單目標。Bootloader 沿用各版固定原始碼、容器及板級模板，輸出 BIN／ELF；以 ARM ELF load segments 與 BIN bytes 核對、驗證 128 KiB 容量及 Flash 起點。NuttX 初始 SP 為 _ebss + CONFIG_IDLETHREAD_STACKSIZE，附件 idle stack 為 750 bytes，實際 SP 未對齊而被檢查拒絕；r3 模板將 idle／init stack 改為 768／3200 bytes、linker _ebss 改為 8-byte 對齊。產物檢查要求 8-byte 對齊，並限定有效 SRAM 區間與 Thumb Reset 位址。
+
+參考：[官方 Copter-4.7.0](https://github.com/ArduPilot/ardupilot/releases/tag/Copter-4.7.0)、[官方 PX4 Bootloader 建置／刷寫](https://docs.px4.io/main/en/advanced_config/bootloader_update)、[固定 NuttX 向量表](https://github.com/PX4/NuttX/blob/fb2fadf6f599c1406f052db013efd00a2518e72c/arch/arm/src/armv7-m/arm_vectors.c)。

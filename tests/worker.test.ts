@@ -50,7 +50,7 @@ test('Workers 實際 runtime 完成 OAuth、原生 fetch 與私人配置授權',
     assert.equal(templates.status,200);
     assert.ok((await templates.json() as any).files['default.px4board'].includes('CONFIG_BOARD'));
     assert.equal(exchanges,1);assert.equal(calls,3);
-    const profile='px4-1.17.0-morakot-r2';
+    const profile='px4-1.17.0-morakot-r3';
     const versioned=await runtime.dispatchFetch(env.API_ORIGIN+'/templates/px4?profile='+profile,{headers:{Origin:env.PAGES_ORIGIN,Authorization:'Bearer '+session}});
     assert.equal(versioned.status,200);const data=await versioned.json() as any;
     assert.equal(data.templateRevision,targetFor('px4',profile).templateRevision);

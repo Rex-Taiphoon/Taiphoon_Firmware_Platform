@@ -2,17 +2,17 @@
 
 ## 最新：多版本與統一命名（2026-10-03）
 
-47 項 Node 測試、TypeScript、Vite production build、API bundle 與公開前端邊界檢查通過。測試含 schema-1／2 相容、按版本的私人模板、原生 Workers OAuth 後保存 schema-2、來源／profile／recipe 篡改拒絕、台灣跨日／重跑命名、修改摘要、精確 cache key／可信 job digest、介面 HTML 的版本選項與移除 OSD／示意圖。
+51 項 Node 測試、TypeScript、Vite production build、API bundle 與公開前端邊界檢查通過。測試含 schema-1／2 相容、按版本的私人模板、原生 Workers OAuth 後保存 schema-2、來源／profile／recipe 篡改拒絕、台灣跨日／重跑命名、修改摘要、精確 cache key／可信 job digest、介面 HTML 的版本選項與移除 OSD／示意圖。
 
 五組真實 Actions 全部成功，Platform.status 皆為 success。逐一下載核對韌體 SHA-256、config.json 與 changes.json，provenance 的 source／config／profile／recipe SHA、run／attempt、時間／流水號均符合該次工作。驗證使用完整模板加不影響硬體設定的註解，測試修改確實保存與套用。
 
 | 韌體／目標 | Actions | 目前 Release |
 | --- | --- | --- |
-| PX4 1.17.0 | [37132095777](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37132095777) | [PX41.17.0-Morakot-20261003-13](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX41.17.0-Morakot-20261003-13) |
-| PX4 1.18.0-beta1 | [37132107973](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37132107973) | [PX41.18.0-beta1-Morakot-20261003-14](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX41.18.0-beta1-Morakot-20261003-14) |
-| ArduPilot Copter 4.6.3 | [37132118641](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37132118641) | [ArduPilot4.6.3-Morakot-20261003-8](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/ArduPilot4.6.3-Morakot-20261003-8) |
-| Betaflight 2026.12.0-alpha | [37132131524](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37132131524) | [Betaflight2026.12.0-alpha-Morakot-20261003-10](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/Betaflight2026.12.0-alpha-Morakot-20261003-10) |
-| AM32 2.20 G071 | [37132141772](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37132141772) | [AM322.20-Morakot-20261003-7](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/AM322.20-Morakot-20261003-7) |
+| PX4 1.17.0 | [37132095777](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37132095777) | [PX4-1.17.0-Morakot-20261003-13](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX41.17.0-Morakot-20261003-13) |
+| PX4 1.18.0-beta1 | [37132107973](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37132107973) | [PX4-1.18.0-beta1-Morakot-20261003-14](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX41.18.0-beta1-Morakot-20261003-14) |
+| ArduPilot Copter 4.6.3 | [37132118641](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37132118641) | [ArduPilot-4.6.3-Morakot-20261003-8](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/ArduPilot4.6.3-Morakot-20261003-8) |
+| Betaflight 2026.12.0-alpha | [37132131524](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37132131524) | [Betaflight-2026.12.0-alpha-Morakot-20261003-10](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/Betaflight2026.12.0-alpha-Morakot-20261003-10) |
+| AM32 2.20 G071 | [37132141772](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37132141772) | [AM32-2.20-Morakot-20261003-7](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/AM322.20-Morakot-20261003-7) |
 
 來源及 profile 的維護方法見 versions.md。PX4 1.17 為官方固定來源，1.18 beta 為既有固定 fork，兩者共用編譯入口但各有獨立模板及版本驗證。AM32 固定來源 Inc/version.h 的版本已確認為 2.20。
 
@@ -26,7 +26,7 @@
 
 最初五次工作因 Actions Artifact quota 滿而在快照上傳失敗。改為按固定配置 commit 讀取快照、以官方 cache 暫存同次 run／attempt／SHA 的產物，publish 比對 build job digest 並獨立驗證；未增加付費額度。命名時間的 API 查詢在前置步驟完成，編譯工具鏈不接收 API token。最終流程固定 tag platform-build-v2-4，commit 33f1a7c050d1a30db378324ccf71a99f8bdb23d1。
 
-使用者授權清除目前 Releases 後，已刪除 13 個舊版／過渡 Releases（含草稿和附件），目前只保留上表 5 個正式結果。未刪除原始碼、配置快照或 workflow tags。下面歷史紀錄的 Release 連結已不提供下載，保留作驗證證據；舊快照仍可讀取，新工作需選 profile。Release 刪除後回報找不到結果是預期狀態。
+使用者授權清除目前 Releases 後，已刪除 13 個舊版／過渡 Releases（含草稿和附件），清理當時保留上表 5 個正式結果；後續驗證另新增 Release。未刪除原始碼、配置快照或 workflow tags。下面歷史紀錄的 Release 連結已不提供下載，保留作驗證證據；舊快照仍可讀取，新工作需選 profile。Release 刪除後回報找不到結果是預期狀態。
 
 尚未進行硬體刷寫、感測器或飛行验收。ArduPilot Plane／Rover／Sub、AM32 L431 CAN 與更廣功能組合未逐一驗證。INAV 仍缺 Morakot 定義。
 

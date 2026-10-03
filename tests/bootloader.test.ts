@@ -15,15 +15,18 @@ function packagePair(){
 }
 test('Bootloader BIN／ELF 核對內容、向量、MCU、Flash 起點與保留容量',()=>{
   const {binary,elf}=packagePair();assert.equal(verifyPx4Bootloader(binary,elf).flashAddress,'0x08000000');
-  binary.writeUInt32LE(0x240032fc);binary.copy(elf,84);verifyPx4Bootloader(binary,elf);
+  binary.writeUInt32LE(0x2400172e);binary.copy(elf,84);assert.throws(()=>verifyPx4Bootloader(binary,elf));
   for(const corrupt of [()=>{binary[12]^=1;},()=>binary.writeUInt32LE(0x08020009,4),()=>elf.writeUInt32LE(0x08020000,64),()=>elf.writeUInt16LE(62,18)]){
     const pair=packagePair();pair.binary.copy(binary);pair.elf.copy(elf);corrupt();assert.throws(()=>verifyPx4Bootloader(binary,elf));
   }
   assert.throws(()=>verifyPx4Bootloader(Buffer.alloc(131073),packagePair().elf));
 });
 test('兩個 PX4 版本只接受受控 bootloader 目標，與主韌體有獨立名稱',()=>{
-  for(const profile of ['px4-1.17.0-morakot-r2','px4-1.18.0-beta1-6-g186ad6d691-morakot-r2']){
+  for(const profile of ['px4-1.17.0-morakot-r3','px4-1.18.0-beta1-6-g186ad6d691-morakot-r3']){
     const config=configFor('px4',profile);config.options.buildTarget='bootloader';
+    const files=templateData[targetFor('px4',profile).templateKey!];
+    assert.match(files['nuttx-config/bootloader/defconfig'],/^CONFIG_IDLETHREAD_STACKSIZE=768$/m);
+    assert.match(files['nuttx-config/scripts/bootloader_script.ld'],/ALIGN\(8\);\n\s*_ebss/);
     assert.equal(plan(config,'definition')[1].args[1],'morakot_v6_bootloader');
     assert.throws(()=>validateConfig({...config,options:{...config.options,buildTarget:'upload; bash'}}));
     const saved={config,recipeRef:'platform-build-v2-5',createdAt:'2026-10-03T00:00:00Z'} as any;
@@ -39,4 +42,8 @@ test('舊工作標籤保留查詢相容性，4.7.0 模板與來源獨立保存',
   assert.notEqual(old.sourceSha,next.sourceSha);assert.notEqual(old.templateKey,next.templateKey);
   assert.deepEqual(templateData[next.templateKey!],templateData[old.templateKey!]);
   assert.equal(next.repository,'ArduPilot/ardupilot');assert.equal(next.version,'4.7.0');
+  const migrated=targetFor('ardupilot','ardupilot-4.7.0-morakot-r2');
+  assert.match(templateData[migrated.templateKey!]['hwdef.dat'],/^define AP_COMPASS_PROBING_ENABLED 1$/m);
+  assert.ok(!templateData[migrated.templateKey!]['hwdef.dat'].includes('HAL_PROBE_EXTERNAL_I2C_COMPASSES'));
+  assert.ok(templateData[old.templateKey!]['hwdef.dat'].includes('HAL_PROBE_EXTERNAL_I2C_COMPASSES'));
 });
