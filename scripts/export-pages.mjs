@@ -1,0 +1,10 @@
+import { cpSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+const destination = resolve(process.argv[2] || '.research/pages-repository');
+if (!destination.startsWith(resolve('.research') + '\\') && !destination.startsWith(resolve('.research') + '/')) throw Error('Export must stay in .research');
+for (const name of readdirSync('dist')) if (!['assets','index.html','taiphoon-logo.png'].includes(name)) throw Error('Unexpected public asset');
+mkdirSync(destination,{recursive:true}); cpSync('dist',destination+'/site',{recursive:true});
+mkdirSync(destination+'/.github/workflows',{recursive:true});
+writeFileSync(destination+'/.github/workflows/pages.yml',readFileSync('deployment/pages-workflow.yml'));
+writeFileSync(destination+'/README.md','# Taiphoon Firmware Pages\n\nPublic frontend assets only. Configuration, API source and firmware Releases are stored separately in the private platform repository.\n');
+console.log('Exported frontend assets only');

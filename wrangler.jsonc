@@ -2,15 +2,19 @@
   "name": "taiphoon-firmware-api",
   "main": "server/worker.ts",
   "compatibility_date": "2026-10-03",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "workers_dev": true,
   "vars": {
     "PAGES_ORIGIN": "https://rex-taiphoon.github.io",
-    "API_ORIGIN": "https://replace-after-first-deploy.workers.dev",
+    "API_ORIGIN": "https://taiphoon-firmware-api.taiphoon-firmware-platform.workers.dev",
     "GITHUB_OWNER": "Rex-Taiphoon",
     "GITHUB_REPO": "Taiphoon_Firmware_Platform",
     "GITHUB_CONFIG_BRANCH": "main",
     "GITHUB_WORKFLOW_REF": "main",
-    "GITHUB_WORKFLOW_FILE": "firmware.yml"
-  }
+    "GITHUB_WORKFLOW_FILE": "firmware.yml",
+    "GITHUB_APP_CLIENT_ID": "Iv23liV3ceZiJQO10SpK"
+  },
+  "account_id": "98d6d00a213f00c6b134ac23e3c77854"
 }

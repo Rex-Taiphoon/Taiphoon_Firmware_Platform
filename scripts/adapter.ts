@@ -7,7 +7,7 @@ export function plan(value: unknown, definitionDir: string): Command[] {
   const c = validateConfig(value);
   switch (c.target) {
     case 'ardupilot': return [{ executable: './waf', args: ['configure', '--board', 'Morakot', '--default-parameters=platform-defaults.parm', '--extra-hwdef=platform-extra.dat'] }, { executable: './waf', args: [String(c.options.vehicle)] }];
-    case 'px4': return [{ executable: 'bash', args: ['Tools/setup/ubuntu.sh', '--no-sim-tools'] }, { executable: 'make', args: ['-j2', 'morakot_v6_default', `PX4_CMAKE_BUILD_TYPE=${c.options.buildType}`] }];
+    case 'px4': return [{ executable: 'bash', args: ['Tools/setup/ubuntu.sh', '--no-sim-tools'] }, { executable: 'make', args: ['-j2', 'morakot_v6_default', `PX4_CMAKE_BUILD_TYPE=${c.options.buildType === 'Release' ? 'MinSizeRel' : 'Debug'}`] }];
     case 'betaflight': return [{ executable: 'make', args: ['arm_sdk_install', `BETAFLIGHT_CONFIG=${definitionDir}`] }, { executable: 'make', args: ['-j2', 'fwo', 'CONFIG=MORAKOT', `BETAFLIGHT_CONFIG=${definitionDir}`] }];
     case 'am32': return [{ executable: 'make', args: ['arm_sdk_install'] }, { executable: 'make', args: ['-j2', `MORAKOT_4IN1_ESC_60A_${c.options.variant}`] }];
     case 'inav': throw new Error('INAV MORAKOT 定義尚未提供，不能編譯');
@@ -43,7 +43,7 @@ export function applySettings(config: Config, source: string, definition: string
     }
     const original = readFileSync(join(dir, 'defaults.parm'),'utf8').replace(/^OSD_TYPE2\s+[^\n]*$/gm,'');
     writeFileSync(join(source, 'platform-defaults.parm'), original + `\nOSD_TYPE2 ${c.options.osd ? c.options.osdType2 : '0'}\n`);
-    writeFileSync(join(source, 'platform-extra.dat'), `define OSD_ENABLED ${c.options.osd ? 1 : 0}\ndefine AP_SCRIPTING_ENABLED ${c.options.scripting ? 1 : 0}\n`);
+    writeFileSync(join(source, 'platform-extra.dat'), `define OSD_ENABLED ${c.options.osd ? 1 : 0}\n${c.options.osd ? '' : 'define HAL_WITH_MSP_DISPLAYPORT 0\ndefine HAL_WITH_OSD_BITMAP 0\ndefine OSD_PARAM_ENABLED 0\n'}define AP_SCRIPTING_ENABLED ${c.options.scripting ? 1 : 0}\n`);
   } else if (c.target === 'px4') {
     const dir = join(source,'boards/morakot/v6');
     cpSync('templates/px4',dir,{recursive:true});

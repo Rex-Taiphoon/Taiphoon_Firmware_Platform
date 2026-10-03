@@ -69,7 +69,7 @@ export function releaseIdentity(saved: Snapshot, runId: number, attempt: number)
 export function verifyProvenance(p: unknown, saved: SavedRequest, run: { id: number; run_attempt: number; head_sha: string }, digest: string): Provenance {
   const m = object(p);
   const identity = releaseIdentity(saved,run.id,run.run_attempt);
-  if (m.releaseTag !== undefined && Object.entries(identity).some(([key,v]) => m[key] !== v)) throw new ValidationError('韌體版本、日期或 Release 標籤不一致');
+  if (Object.entries(identity).some(([key,v]) => m[key] !== v)) throw new ValidationError('韌體版本、日期或 Release 標籤不一致');
   if (m.schemaVersion !== 1 || m.requestId !== saved.requestId || m.configSha !== saved.configSha ||
       m.sourceSha !== saved.sourceSha || m.sourceRepository !== saved.sourceRepository || m.target !== saved.config.target ||
       m.configDigest !== digest || m.runId !== run.id || m.runAttempt !== run.run_attempt || m.workflowSha !== run.head_sha ||
