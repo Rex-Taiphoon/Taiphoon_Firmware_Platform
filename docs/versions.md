@@ -57,3 +57,19 @@ ArduPilot 4.7.0 使用官方 ArduPilot/ardupilot 的 Copter-4.7.0，固定來源
 platform-build-v2-5 起，新 Release tag、顯示名稱與產物檔名均以「平台-版本」開頭。既有五個已驗證 Release 只修正顯示名稱；原 tag、產物、快照與 provenance 保留，避免破壞歷史下載與版本核對。歷史 r1／r2 PX4 profile 可讀取，建立新工作請選擇 r3。
 
 Bootloader r3 修正附件的 idle stack 750 → 768 bytes、init stack 3194 → 3200 bytes、linker _ebss 對齊 4 → 8 bytes。初始堆疊需 8-byte 對齊，前兩次檢查拒絕未對齊產物，沒有發布。主韌體 NuttX 配置維持原版本。
+
+
+## 原平台版本與原始碼
+
+版本選單只顯示原平台版本，不顯示配置的 r1／r2／r3。內部 profile ID、模板 hash 與 workflow tag 用於追溯配置，不是新的韌體版本。可選清單會核對官方 Release／tag 後加入；不會自動把未驗證的上游 main 當成最新正式版。
+
+| 平台 | 本次核對的版本 | 原始碼與 Morakot 整合 |
+| --- | --- | --- |
+| PX4 | 1.18.0-rc1、1.18.0-beta2、1.18.0-beta1、1.17.0 | 官方 PX4/PX4-Autopilot 的對應 tag commit，再加入該版 boards/morakot/v6；各版可選主韌體／Bootloader |
+| ArduPilot | 4.7.1、4.7.0、4.6.3 | 官方 Copter tag commit；4.6.3 原 fork SHA 與官方 tag 相同。套用獨立 hwdef/Morakot |
+| Betaflight | 2026.6.2、2026.6.1；另保留原 2026.12.0-alpha 開發來源 | 官方對應 release commit，加上 configs/MORAKOT；alpha 為固定官方開發 commit，不是正式 release tag |
+| AM32 | 2.21、2.20 | 官方 am32-firmware/AM32 tag commit，在各版官方 targets.h 加入 Morakot 定義，保留該版原生硬體映射及其他目標 |
+
+選定版本後，API 保存來源完整 SHA、該版完整配置與模板，Actions checkout 同一 SHA，再套用受控的 Morakot 定義。PX4 同時核對官方 tag 物件與 Git describe。編譯器與編譯命令由維護者固定，使用者只能修改受控配置／選項。歷史使用 Rex fork 的 PX4 beta 配置僅供找回舊工作；新建 beta 工作使用官方 tag，不混入 tag 之後的變更。新增下一個版本仍須進行雲端驗證與部署清單，這是版本支援維護，不需要使用者本地編譯。
+
+新版預設選近期正式版，RC／Beta 仍可選擇。4.6.3 的 Sub 原始碼為開發版，因此新版 4.6.3 profile 僅提供 Copter／Plane／Rover；Sub 請選官方 4.7.0／4.7.1。歷史舊設定仍保留原載具版本。

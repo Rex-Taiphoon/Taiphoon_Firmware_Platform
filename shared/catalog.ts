@@ -86,10 +86,12 @@ profiles.push({...profiles.find(t=>t.id==='betaflight' && t.available)!,...{"pro
 profiles.push({...profiles.find(t=>t.id==='am32' && t.available)!,...{"profileId":"am32-2.21-morakot","repository":"am32-firmware/AM32","sourceSha":"6b3ef3d15228e8d70244bd6e3bd87c7eac939d6f","ref":"v2.21","version":"2.21","upstreamTag":"v2.21","upstreamTagSha":"6b3ef3d15228e8d70244bd6e3bd87c7eac939d6f","templateKey":"am32-2.21","available":true,"description":"2.21 · Morakot","note":"官方 v2.21 固定原始碼，加上獨立 Morakot 配置；雲端編譯後仍需實機驗收"},templateRevision:templateRevisions["am32-2.21"],editableFiles:boardFiles["am32-2.21"]});
 profiles.push({...profiles.find(t=>t.id==='am32' && t.available)!,...{"profileId":"am32-2.20-morakot","repository":"am32-firmware/AM32","sourceSha":"7859b1f5200293fcedb382055600c2ee0fd7f557","ref":"v2.20","version":"2.20","upstreamTag":"v2.20","upstreamTagSha":"7859b1f5200293fcedb382055600c2ee0fd7f557","templateKey":"am32-2.20","available":true,"description":"2.20 · Morakot","note":"官方 v2.20 固定原始碼，加上獨立 Morakot 配置；雲端編譯後仍需實機驗收"},templateRevision:templateRevisions["am32-2.20"],editableFiles:boardFiles["am32-2.20"]});
 profiles.find(t=>t.profileId==='am32-2.20-morakot-r1')!.available=false;
+const old463=profiles.find(t=>t.profileId==='ardupilot-4.6.3-morakot-r1')!;old463.available=false;
+profiles.push({...old463,available:true,profileId:'ardupilot-4.6.3-morakot',repository:'ArduPilot/ardupilot',ref:'Copter-4.6.3',upstreamTag:'Copter-4.6.3',upstreamTagSha:old463.sourceSha,vehicleVersions:{copter:'4.6.3',plane:'4.6.3',rover:'4.6.3'},fields:old463.fields.map(f=>f.key==='vehicle'?{...f,choices:f.choices!.filter(c=>c.value!=='sub')}:f),note:'官方 4.6.3 固定來源，加上 Morakot 配置；此版本支援 Copter／Plane／Rover，Sub 請選 4.7.0 或 4.7.1'});
 export function displayVersion(target: Target,variant?:string): string {
   return (target.vehicleVersions?.[variant || ''] || target.version || 'Development').replace(/-\d+-g[0-9a-f]+$/,'');
 }
-export function defaultProfileId(id: FirmwareId): string | undefined { return profilesFor(id).find(t=>t.available)?.profileId; }
+export function defaultProfileId(id: FirmwareId): string | undefined { const choices=profilesFor(id).filter(t=>t.available).sort((a,b)=>displayVersion(b).localeCompare(displayVersion(a),undefined,{numeric:true})); return (choices.find(t=>!/-alpha|-beta|-rc|dev/i.test(t.version || '')) || choices[0])?.profileId; }
 export function targetFor(id: unknown, profileId?: string): Target {
   const target = profileId ? profiles.find(t=>t.id===id && t.profileId===profileId) : targets.find(t => t.id === id);
   if (!target) throw new Error('不支援的韌體目標');

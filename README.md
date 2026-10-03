@@ -105,14 +105,19 @@ PX4 的 bootloader 檔案也可編輯、保存；目前 workflow 編譯的是 de
 Betaflight 停用 Blackbox 也移除依賴它的 USB MSC；停用遙測也移除 FPort、Jeti EX Bus、MAVLink 接收與 CRSF v3 遙測功能，基本 CRSF 接收保留。
 
 
-## PX4 Bootloader 與 4.7.0
+## 可選的原平台版本
 
-PX4 1.17.0 與 1.18.0-beta1 的新版 r3 profile 提供「編譯內容」選擇。主韌體使用 morakot_v6_default，輸出 .px4；Bootloader 使用 morakot_v6_bootloader，輸出 .bin 與 .elf。Bootloader 原樣套用 bootloader.px4board、NuttX bootloader defconfig、linker script 及板級程式；DDS 與主韌體 LTO 不套用。可在 Bootloader 配置檔控制需要的編譯設定。
+| 平台 | 可選版本 |
+| --- | --- |
+| PX4 | 1.18.0-rc1、1.18.0-beta2、1.18.0-beta1、1.17.0 |
+| ArduPilot | 4.7.1、4.7.0、4.6.3 |
+| Betaflight | 2026.6.2、2026.6.1；另保留 2026.12.0-alpha 固定開發來源 |
+| AM32 | 2.21、2.20 |
 
-Bootloader 名稱例：`PX4-1.17.0-Morakot-Bootloader-20261003-15`；主韌體例：`PX4-1.17.0-Morakot-20261003-16`。使用 SWD／DFU，Flash 位址 0x08000000，保留容量 128 KiB，主韌體起點 0x08020000；不可把 Bootloader 當作 .px4 更新。流程驗證 ARM ELF、BIN／ELF 的映像一致性、向量表、起點與容量。尚未實機刷寫。
+預設選近期正式版，RC／Beta 可自行切換。版本名稱遵循原平台，Morakot 是硬體目標；內部配置 ID／模板修訂用於追溯，不顯示成韌體版本。Actions 取得選定官方 tag 的固定來源 SHA，再加入該版 Morakot 板級定義。PX4 新 beta 工作使用官方 tag；原 fork 的後續變更僅保留於歷史工作。
 
-ArduPilot 4.7.0 使用官方 ArduPilot/ardupilot 的 Copter-4.7.0，固定來源 1511f27194f1dcc3728270883047bdf022b3fd53，搭配獨立 Morakot 模板。官方已有 4.7.1；目前依指定加入 4.7.0，並未把 4.7.0 標成永遠最新版本。
+ArduPilot 4.6.3 支援 Copter／Plane／Rover；該來源的 Sub 實際為開發版，所以此選項不提供 Sub，請改選 4.7.0／4.7.1。
 
-platform-build-v2-5 起，新 Release tag、顯示名稱與產物檔名均以「平台-版本」開頭。既有五個已驗證 Release 只修正顯示名稱；原 tag、產物、快照與 provenance 保留，避免破壞歷史下載與版本核對。歷史 r1／r2 PX4 profile 可讀取，建立新工作請選擇 r3。
+PX4 各版本可選主韌體或 Bootloader。主韌體输出 .px4；Bootloader 輸出 .bin／.elf，透過 SWD／DFU，Flash 位址 0x08000000，保留容量 128 KiB，主韌體起點 0x08020000。Bootloader 不套用 DDS／主韌體 LTO；其堆疊大小及 linker 對齊已修正並由產物檢查核對。正式操作與編譯均由 GitHub 託管，使用者本地只需瀏覽器。
 
-Bootloader r3 修正附件的 idle stack 750 → 768 bytes、init stack 3194 → 3200 bytes、linker _ebss 對齊 4 → 8 bytes。初始堆疊需 8-byte 對齊，前兩次檢查拒絕未對齊產物，沒有發布。主韌體 NuttX 配置維持原版本。
+既有五個 Release 已修正顯示名稱，原 tag 與資產保留以維持追溯與下載；新工作 tag、顯示名稱及檔名都以「平台-版本」開頭。完整版本維護及歷史相容見 [versions.md](docs/versions.md)。

@@ -49,3 +49,21 @@ ArduPilot 4.7.0 固定官方 Copter-4.7.0 commit 1511f27194f1dcc3728270883047bdf
 PX4 r3 profile 支援 default／bootloader 兩個白名單目標。Bootloader 沿用各版固定原始碼、容器及板級模板，輸出 BIN／ELF；以 ARM ELF load segments 與 BIN bytes 核對、驗證 128 KiB 容量及 Flash 起點。NuttX 初始 SP 為 _ebss + CONFIG_IDLETHREAD_STACKSIZE，附件 idle stack 為 750 bytes，實際 SP 未對齊而被檢查拒絕；r3 模板將 idle／init stack 改為 768／3200 bytes、linker _ebss 改為 8-byte 對齊。產物檢查要求 8-byte 對齊，並限定有效 SRAM 區間與 Thumb Reset 位址。
 
 參考：[官方 Copter-4.7.0](https://github.com/ArduPilot/ardupilot/releases/tag/Copter-4.7.0)、[官方 PX4 Bootloader 建置／刷寫](https://docs.px4.io/main/en/advanced_config/bootloader_update)、[固定 NuttX 向量表](https://github.com/PX4/NuttX/blob/fb2fadf6f599c1406f052db013efd00a2518e72c/arch/arm/src/armv7-m/arm_vectors.c)。
+
+
+## 近期官方 Release 來源（2026-10-04 核對）
+
+新工作依選定原平台版本 checkout 對應完整 commit，才套用 Morakot 配置。AM32 各版模板保留官方 targets.h 全文，只加入兩組 Morakot 條件定義；其 Makefile 從 FILE_NAME 自動取得編譯目標，不把舊 fork 的整份 header 覆蓋到新版。
+
+| 平台／原 tag | Repository | 固定來源 commit |
+| --- | --- | --- |
+| px4 / v1.18.0-rc1 | PX4/PX4-Autopilot | fca3df865af36124a28c9d607e850f111dbaaea9 |
+| px4 / v1.18.0-beta2 | PX4/PX4-Autopilot | 83c4f4e580558816f0e398918f66358988004696 |
+| ardupilot / Copter-4.7.1 | ArduPilot/ardupilot | dbe792162d06cab66c3475fd5556bf7a120f119e |
+| betaflight / 2026.6.2 | betaflight/betaflight | e0b7bb01b17b21351057e9ead2d1ab39dd44fa16 |
+| betaflight / 2026.6.1 | betaflight/betaflight | 6dbc4218fd6bc33bf16ea32c670304d4f89321d5 |
+| am32 / v2.21 | am32-firmware/AM32 | 6b3ef3d15228e8d70244bd6e3bd87c7eac939d6f |
+| am32 / v2.20 | am32-firmware/AM32 | 7859b1f5200293fcedb382055600c2ee0fd7f557 |
+| px4 / v1.18.0-beta1 | PX4/PX4-Autopilot | fd132028513748238be1762e57893bbca9fcf179 |
+
+既有 beta fork 的 186ad6d691 在官方 beta1 之後還有 6 個 commit，包括功能變更；新的 beta1 選項改用官方 tag commit，舊快照／Release 仍依原來源核對。ArduPilot 4.6.3 的 92b0cd788ec29406f26c6f9c31d5ceedbd1cc538 已另外確認等於官方 Copter-4.6.3 tag 的 commit。

@@ -28,7 +28,7 @@ test('新舊快照並存；新增版本不會破壞舊工作與 Release 下载',
   assert.equal((await p.saved(ID)).sourceSha,legacy.sourceSha);assert.equal((await p.status(ID)).releaseUrl,prior);
   await p.dispatch(ID2);assert.equal((await p.saved(ID2)).config.profileId,newer.config.profileId);
   assert.equal(gh.dispatchInputs.config_sha,newer.configSha);gh.publish(newer);
-  assert.equal((await p.status(ID2)).phase,'success');assert.match((await p.status(ID2)).releaseUrl!,/ArduPilot4.6.3-Morakot-20261004-82$/);
+  assert.equal((await p.status(ID2)).phase,'success');assert.match((await p.status(ID2)).releaseUrl!,/ArduPilot4.7.1-Morakot-20261004-82$/);
 });
 test('新 API 僅建立具名版本工作；舊設定可恢復與冪等讀取，不能生成旧命名新 Release',async()=>{
   const {gh,p}=setup(),old=new Platform(env,gh,'Rex-Taiphoon');
@@ -40,17 +40,17 @@ test('新 API 僅建立具名版本工作；舊設定可恢復與冪等讀取，
 });
 test('重新命名歷史 Release 只改顯示標題，設定、provenance 與下載 tag 仍核對原工作',async()=>{
   const {gh,p}=setup(),saved=await p.save(ID,configFor('ardupilot',defaultProfileId('ardupilot')));
-  await p.dispatch(ID);gh.publish(saved);gh.release.name='ArduPilot-4.6.3-Morakot-20261004-82';
+  await p.dispatch(ID);gh.publish(saved);gh.release.name='ArduPilot-4.7.1-Morakot-20261004-82';
   const status=await p.status(ID);
   assert.equal(status.phase,'success');assert.equal(status.releaseName,gh.release.name);
-  assert.match(status.releaseUrl!,/ArduPilot4.6.3/);assert.match(status.assets![0].url!,/ArduPilot4.6.3/);
+  assert.match(status.releaseUrl!,/ArduPilot4.7.1/);assert.match(status.assets![0].url!,/ArduPilot4.7.1/);
 });
 test('日期以真正的 Actions 建立時間及台灣時區決定，流水號和重跑各自識別',async()=>{
   const {p}=setup(),saved=await p.save(ID,configFor('ardupilot',defaultProfileId('ardupilot')));
   const run={run_number:82,created_at:'2026-10-03T16:30:00Z'};
-  assert.equal(releaseIdentity(saved,71,1,run).releaseTag,'ArduPilot4.6.3-Morakot-20261004-82');
-  assert.equal(releaseIdentity(saved,71,2,run).releaseTag,'ArduPilot4.6.3-Morakot-20261004-82-r2');
-  assert.equal(releaseIdentity(saved,71,2,{...run,run_started_at:'2026-10-05T00:00:00Z'}).releaseTag,'ArduPilot4.6.3-Morakot-20261005-82-r2');
+  assert.equal(releaseIdentity(saved,71,1,run).releaseTag,'ArduPilot4.7.1-Morakot-20261004-82');
+  assert.equal(releaseIdentity(saved,71,2,run).releaseTag,'ArduPilot4.7.1-Morakot-20261004-82-r2');
+  assert.equal(releaseIdentity(saved,71,2,{...run,run_started_at:'2026-10-05T00:00:00Z'}).releaseTag,'ArduPilot4.7.1-Morakot-20261005-82-r2');
   assert.throws(()=>releaseIdentity(saved,71,1),/日期/);
 });
 test('所有平台的新 Release 命名遵循同一規範，PX4 與 AM32 都不帶 hash',async()=>{
@@ -60,7 +60,7 @@ test('所有平台的新 Release 命名遵循同一規範，PX4 與 AM32 都不�
     const identity=releaseIdentity(saved,71,1,{run_number:82,created_at:'2026-10-03T00:00:00Z'});
     assert.match(identity.releaseTag,/^[A-Za-z0-9]+-[0-9.]+(?:-beta\d+|-alpha)?-Morakot-20261003-82$/);
     assert.ok(!/[0-9a-f]{8,}/.test(identity.releaseTag.replace('20261003','')));
-    if(id==='px4')assert.equal(identity.releaseTag,'PX4-1.18.0-beta1-Morakot-20261003-82');
+    if(id==='px4')assert.equal(identity.releaseTag,'PX4-1.17.0-Morakot-20261003-82');
     if(id==='am32')assert.equal(identity.releaseTag,'AM32-2.21-Morakot-20261003-82');
   }
 });
@@ -87,6 +87,16 @@ test('版本白名單按平台驗證，新版不再有獨立 OSD 選項',()=>{
   assert.throws(()=>validateConfig({...c,profileId:'untrusted'}));
   assert.throws(()=>validateConfig({...c,target:'ardupilot'}));
   assert.throws(()=>validateConfig({...c,options:{...c.options,osd:false}}));
+});
+test('預設使用近期正式版本；原版本來源與載具選項須一致，配置修訂不作為韌體版本',()=>{
+  assert.equal(targetFor('px4',defaultProfileId('px4')).version,'1.17.0');
+  assert.equal(targetFor('ardupilot',defaultProfileId('ardupilot')).version,'4.7.1');
+  assert.equal(targetFor('betaflight',defaultProfileId('betaflight')).version,'2026.6.2');
+  const beta=targetFor('px4','px4-1.18.0-beta1-morakot');
+  assert.equal(beta.repository,'PX4/PX4-Autopilot');assert.equal(beta.sourceSha,'fd132028513748238be1762e57893bbca9fcf179');
+  const c=configFor('ardupilot','ardupilot-4.6.3-morakot');c.options.vehicle='sub';
+  assert.throws(()=>validateConfig(c));
+  assert.ok(profiles.filter(t=>t.available).every(t=>!/-r\d+$/.test(t.version || '')));
 });
 test('修改清單相對於選定版本模板，包含參數與檔案的實際增刪行',async()=>{
   const {p}=setup(),c=configFor('ardupilot',defaultProfileId('ardupilot'));c.options.scripting=false;
