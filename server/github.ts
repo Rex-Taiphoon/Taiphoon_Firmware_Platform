@@ -6,11 +6,15 @@ export class GitHubError extends Error {
 }
 export class GitHub {
   private token: string; private transport: Fetch;
-  constructor(token: string, transport: Fetch = fetch) { this.token = token; this.transport = transport; }
+  constructor(token: string, transport: Fetch = fetch) {
+    this.token = token;
+    // Workers' native fetch rejects a GitHub instance as its this receiver.
+    this.transport = (input, init) => transport(input, init);
+  }
   async call<T = any>(path: string, method = 'GET', body?: unknown): Promise<T> {
     if (!path.startsWith('/') || path.startsWith('//')) throw new Error('Invalid API path');
     const response = await this.transport(`https://api.github.com${path}`, {
-      method, headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10', 'Content-Type': 'application/json' },
+      method, headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'Taiphoon-Firmware-Platform', 'X-GitHub-Api-Version': '2026-03-10', 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20000),
     });
     if (!response.ok) throw new GitHubError(response.status);
@@ -19,7 +23,7 @@ export class GitHub {
   async manifest(repository: string, id: number, maxBytes = 65536): Promise<unknown> {
     if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 131072) throw new Error('Invalid manifest limit');
     const r = await this.transport(`https://api.github.com/repos/${repository}/releases/assets/${id}`, {
-      headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/octet-stream', 'X-GitHub-Api-Version': '2026-03-10' }, signal: AbortSignal.timeout(20000),
+      headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/octet-stream', 'User-Agent': 'Taiphoon-Firmware-Platform', 'X-GitHub-Api-Version': '2026-03-10' }, signal: AbortSignal.timeout(20000),
     });
     if (!r.ok) throw new GitHubError(r.status);
     // Bound streamed data too; Content-Length is not trusted.
