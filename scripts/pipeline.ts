@@ -6,6 +6,7 @@ import { GitHub, GitHubError } from '../server/github.ts';
 import { validateConfig, canonicalConfig, requestId, sha, verifyProvenance, type Snapshot, type SavedRequest, type Provenance } from '../shared/domain.ts';
 import { targetFor } from '../shared/catalog.ts';
 import { plan, applySettings } from './adapter.ts';
+import { gitSafetyEnvironment } from './container.ts';
 
 const mode = process.argv[2];
 if (process.env.GITHUB_ACTIONS !== 'true') throw new Error('此腳本僅供經確認的 GitHub Actions 工作執行；本地請使用測試');
@@ -48,8 +49,11 @@ if (mode === 'prepare') {
     const imageDigest = run('docker', ['inspect', '--format={{index .RepoDigests 0}}', image], process.cwd(), true).trim();
     const imageEnvironment: string[] = JSON.parse(run('docker', ['inspect', '--format={{json .Config.Env}}', image], process.cwd(), true));
     const imagePath = imageEnvironment.find(value => value.startsWith('PATH='))?.slice(5) || '/usr/local/bin:/usr/bin:/bin';
-    // Preserve the official image's user, HOME and Python environment. Git sees only this mounted source directory.
-    const dockerArgs = ['run', '--rm', '-e', `PATH=/opt/gcc-arm-none-eabi-10/bin:${imagePath}`, '-e', 'GIT_CONFIG_COUNT=1', '-e', 'GIT_CONFIG_KEY_0=safe.directory', '-e', 'GIT_CONFIG_VALUE_0=/source', '-v', `${source}:/source`, '-w', '/source', image];
+    // Include recursively checked-out submodules; trusting /source alone does not cover ChibiOS.
+    const submodules = run('git', ['submodule', 'foreach', '--quiet', '--recursive', 'pwd'], source, true).trim().split(/\r?\n/).filter(Boolean);
+    const gitEnvironment = gitSafetyEnvironment(source, submodules).flatMap(value => ['-e', value]);
+    // Preserve the official image's user, HOME and Python environment.
+    const dockerArgs = ['run', '--rm', '-e', `PATH=/opt/gcc-arm-none-eabi-10/bin:${imagePath}`, ...gitEnvironment, '-v', `${source}:/source`, '-w', '/source', image];
     toolchain = run('docker', [...dockerArgs, 'arm-none-eabi-gcc', '--version'], process.cwd(), true).split('\n')[0] + `; ${imageDigest}`;
     for (const command of plan(c, '/definition')) run('docker', [...dockerArgs, command.executable, ...command.args], process.cwd());
   } else {
