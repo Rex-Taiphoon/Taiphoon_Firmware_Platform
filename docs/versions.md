@@ -31,7 +31,7 @@ workflow tag 需保留、不移動或刪除；可用 GitHub tag ruleset 限制�
 
 ## 命名與修改摘要
 
-新版：`ArduPilot4.6.3-Morakot-20261003-82`。日期取 Actions 工作 run_started_at（沒有時使用 created_at），轉為 Asia/Taipei；82 是該 workflow 的 run_number，不是每天歸零的計數。重跑第二次加 `-r2`。載具／ESC variant 記錄在 Release 描述及 provenance.json。AM32 未確認正式版本 tag，使用來源 SHA 標示開發版本。舊 schema-1 Release 標籤保持原格式。
+新版：`ArduPilot4.6.3-Morakot-20261003-82`。日期取 Actions 工作 run_started_at（沒有時使用 created_at），轉為 Asia/Taipei；82 是該 workflow 的 run_number，不是每天歸零的計數。重跑第二次加 `-r2`。載具／ESC variant 記錄在 Release 描述及 provenance.json。AM32 使用固定來源 Inc/version.h 的 2.20，沒有以來源 SHA 代替名稱。PX4 顯示上游版本 1.18.0-beta1，Git describe 的距離與 SHA 僅留在 provenance。舊 schema-1 Release 標籤保持原格式。
 
 Release 描述列出相對於所選版本預設模板的參數修改、變更檔案及簡短增刪行摘錄。changes.json 保存完整增刪行清單和修改前後檔案 hash；若只調整行序會標示行序變更，完整順序看 config.json。參數與檔案的摘要不是「與上一個使用者工作」比較，也不是上游原始碼 changelog。模板本身已包含 Morakot 移植。
 

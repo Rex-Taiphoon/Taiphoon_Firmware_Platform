@@ -18,12 +18,15 @@ const safe=(s:string)=>s.replace(/[\r\n]/g,' ').replace(/[\\`*_{}[\]<>!|]/g,c=>'
 export function releaseDescription(saved:SavedRequest,manifest:Provenance,repository:string):string {
   const changes=configurationChanges(saved),t=targetFor(saved.config.target,saved.config.profileId);
   const format=(v:string|boolean)=>typeof v==='boolean'?(v?'啟用':'停用'):v;
-  const lines=[`${t.name} ${manifest.firmwareVersion} · Morakot · ${manifest.variant} · ${manifest.buildDate}（台灣時間）`, '', '修改摘要（相對於此版本的 Morakot 預設配置）：'];
+  const lines=[`${t.name} ${manifest.displayFirmwareVersion || manifest.firmwareVersion} · Morakot · ${manifest.variant} · ${manifest.buildDate}（台灣時間）`, '', '修改摘要（相對於此版本的 Morakot 預設配置）：'];
   for(const o of changes.options)lines.push(`- ${safe(o.label)}：${safe(format(o.before))} → ${safe(format(o.after))}`);
+  let excerptBudget=3500;
   for(const f of changes.files){
     lines.push(`- ${safe(f.path)}：新增 ${f.added.length} 行、移除 ${f.removed.length} 行${!f.added.length&&!f.removed.length?'（行序調整）':''}`);
     const edits=[...f.removed.map(line=>'- '+line),...f.added.map(line=>'+ '+line)].slice(0,6);
-    if(edits.length)lines.push('','~~~~diff',...edits.map(line=>line.replaceAll('~','∼').slice(0,160)),'~~~~');
+    const excerpt=edits.map(line=>line.replaceAll('~','∼').slice(0,160));
+    const size=excerpt.join('\n').length;
+    if(excerpt.length && size<=excerptBudget){lines.push('','~~~~diff',...excerpt,'~~~~');excerptBudget-=size;}
   }
   if(!changes.options.length&&!changes.files.length)lines.push('- 使用此版本的預設配置，無使用者修改。');
   lines.push('',`設定：[${saved.configSha.slice(0,12)}](https://github.com/${repository}/commit/${saved.configSha}) · 原始碼：[${saved.sourceSha.slice(0,12)}](https://github.com/${saved.sourceRepository}/commit/${saved.sourceSha})`,

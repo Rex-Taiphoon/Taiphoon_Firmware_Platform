@@ -10,6 +10,7 @@ import { gitSafetyEnvironment } from './container.ts';
 import { verifyPx4, verifyArduPilot } from './packages.ts';
 import { checkSnapshot } from '../server/build-profile.ts';
 import { releaseDescription, configurationChanges } from './release-notes.ts';
+import {transferDigest} from './transfer.ts';
 import {validateRunContext} from './run-context.ts';
 
 const mode = process.argv[2];
@@ -20,7 +21,6 @@ const repository = process.env.GITHUB_REPOSITORY!;
 const source = resolve('work/source'), definition = resolve('work/definition');
 const github = new GitHub(process.env.GITHUB_TOKEN || '');
 const expectedRun={id:Number(process.env.GITHUB_RUN_ID),attempt:Number(process.env.GITHUB_RUN_ATTEMPT),number:Number(process.env.GITHUB_RUN_NUMBER),sha:process.env.GITHUB_SHA!};
-function transferDigest() { return createHash('sha256').update(JSON.stringify(readdirSync('output').sort().map(name=>({name,sha256:digest(join('output',name))})))).digest('hex'); }
 function digest(path: string) { return createHash('sha256').update(readFileSync(path)).digest('hex'); }
 async function snapshot(): Promise<SavedRequest> {
   const file = await github.call(`/repos/${repository}/contents/requests/${id}.json?ref=${configSha}`);
@@ -54,6 +54,11 @@ if (mode === 'prepare') {
   const c = validateConfig(s.config); const target = targetFor(c.target,c.profileId);
   if (s.sourceSha !== target.sourceSha || s.sourceRepository !== target.repository) throw new Error('非受控原始碼');
   verifyCheckout(source, s.sourceSha); if (s.definitionSha) verifyCheckout(definition, s.definitionSha);
+  if(c.target==='am32' && target.version){
+    const header=readFileSync(join(source,'Inc/version.h'),'utf8');
+    const version=header.match(/^#define VERSION_MAJOR\s+(\d+)/m)?.[1]+'.'+header.match(/^#define VERSION_MINOR\s+(\d+)/m)?.[1];
+    if(version!==target.version)throw new Error('AM32 固定來源版本定義不符');
+  }
   if (c.target === 'px4') {
     // The Morakot fork does not publish the upstream release tags. Fetch only the
     // verified upstream tag; the firmware source remains the pinned Morakot SHA.

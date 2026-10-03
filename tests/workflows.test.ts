@@ -25,6 +25,17 @@ test('只編譯模式拒絕直接執行 Release 發布脚本，不呼叫 GitHub'
   assert.equal(result.status, 1);
   assert.match(result.stderr, /未確認發布 Release/);
 });
+test('cache 僅轉交同次 run／attempt／SHA，沒有 fallback，發布比對可信 job 摘要',()=>{
+  for(const file of ['firmware','ardupilot','px4','betaflight']){
+    const w=parse(readFileSync(`.github/workflows/${file}.yml`,'utf8'));
+    const save=w.jobs.build.steps.find((s:any)=>s.uses?.startsWith('actions/cache/save'));
+    const restore=w.jobs.publish.steps.find((s:any)=>s.uses?.startsWith('actions/cache/restore'));
+    assert.equal(save.with.key,'firmware-transfer-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}');
+    assert.equal(restore.with.key,save.with.key);assert.equal(restore.with['fail-on-cache-miss'],true);assert.equal(restore.with['restore-keys'],undefined);
+    assert.equal(w.jobs.publish.steps.find((s:any)=>s.run==='node scripts/pipeline.ts publish').env.TRANSFER_HASH,'${{ needs.build.outputs.transfer_hash }}');
+    assert.ok(!w.jobs.build.steps.find((s:any)=>s.run==='node scripts/pipeline.ts build').env?.GITHUB_TOKEN);
+  }
+});
 test('Pages 只手動发布 dist，不帶韌體或憑證', () => {
   const w = parse(readFileSync('.github/workflows/pages.yml', 'utf8'));
   assert.deepEqual(Object.keys(w.on), ['workflow_dispatch']); assert.equal(w.on.workflow_dispatch.inputs.confirmed.default, false);

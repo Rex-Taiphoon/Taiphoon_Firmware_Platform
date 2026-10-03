@@ -51,7 +51,14 @@ profiles.push({...px4, profileId:'px4-1.17.0-morakot-r1', repository:'PX4/PX4-Au
   editableFiles:boardFiles['px4-1.17'], upstreamTag:'v1.17.0', upstreamTagSha:'a5eb12d2ab591251faa009f76b2685b8cc64405d',
   note:'官方 PX4 1.17.0 固定來源，搭配獨立 Morakot 配置；雲端編譯驗證不等同硬體驗收'});
 export function profilesFor(id: FirmwareId): Target[] { return profiles.filter(t=>t.id===id); }
-export function defaultProfileId(id: FirmwareId): string | undefined { return profilesFor(id)[0]?.profileId; }
+const am32=profiles.find(t=>t.id==='am32')!;
+// The fixed source's Inc/version.h defines 2.20. Keep the former SHA-labelled profile for history.
+am32.available=false;
+profiles.push({...am32,profileId:'am32-2.20-morakot-r1',version:'2.20',available:true,description:'2.20 · Morakot 4-in-1 ESC'});
+export function displayVersion(target: Target,variant?:string): string {
+  return (target.vehicleVersions?.[variant || ''] || target.version || 'Development').replace(/-\d+-g[0-9a-f]+$/,'');
+}
+export function defaultProfileId(id: FirmwareId): string | undefined { return profilesFor(id).find(t=>t.available)?.profileId; }
 export function targetFor(id: unknown, profileId?: string): Target {
   const target = profileId ? profiles.find(t=>t.id===id && t.profileId===profileId) : targets.find(t => t.id === id);
   if (!target) throw new Error('不支援的韌體目標');

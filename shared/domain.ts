@@ -1,4 +1,4 @@
-import { targets, targetFor, type FirmwareId } from './catalog.ts';
+import { targets, targetFor, displayVersion, type FirmwareId } from './catalog.ts';
 import { validateFiles } from './file-policy.ts';
 export type Config = {
   schemaVersion: 1 | 2;
@@ -24,6 +24,7 @@ export type Provenance = {
   definitionRepository?: string; definitionSha?: string;
   firmwareVersion?: string; buildDate?: string; releaseTag?: string; variant?: string;
   profileId?: string; profileDigest?: string; recipeSha?: string; buildNumber?: number; buildStartedAt?: string;
+  displayFirmwareVersion?: string;
 };
 export type BuildStatus = {
   phase: Phase; message?: string; runId?: number; runAttempt?: number;
@@ -75,9 +76,12 @@ export function releaseIdentity(saved: Snapshot, runId: number, attempt: number,
     const started=run.run_started_at || run.created_at;
     if(!Number.isFinite(Date.parse(started)))throw new ValidationError('工作開始時間無效');
     const taiwanDate=new Date(Date.parse(started)+8*3600000).toISOString().slice(0,10);
+    const oldNaming=['platform-build-v2-1','platform-build-v2-2','platform-build-v2-3'].includes(saved.recipeRef || '');
+    const readable=displayVersion(t,variant);
     return {firmwareVersion, variant, profileId:t.profileId, profileDigest:saved.profileDigest, recipeSha:saved.recipeSha,
+      ...(!oldNaming ? {displayFirmwareVersion:readable} : {}),
       buildDate:taiwanDate, buildStartedAt:started, buildNumber:run.run_number,
-      releaseTag:`${t.name}${version}-Morakot-${taiwanDate.replaceAll('-','')}-${run.run_number}${attempt>1?'-r'+attempt:''}`};
+      releaseTag:`${t.name}${oldNaming?version:readable}-Morakot-${taiwanDate.replaceAll('-','')}-${run.run_number}${attempt>1?'-r'+attempt:''}`};
   }
   return { firmwareVersion, buildDate: saved.createdAt.slice(0,10), variant,
     releaseTag: `${t.id}-${variant}-${version}-${date}-${runId}-${attempt}` };
