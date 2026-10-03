@@ -55,6 +55,19 @@ const am32=profiles.find(t=>t.id==='am32')!;
 // The fixed source's Inc/version.h defines 2.20. Keep the former SHA-labelled profile for history.
 am32.available=false;
 profiles.push({...am32,profileId:'am32-2.20-morakot-r1',version:'2.20',available:true,description:'2.20 · Morakot 4-in-1 ESC'});
+const ardu=profiles.find(t=>t.id==='ardupilot')!;
+profiles.push({...ardu,profileId:'ardupilot-4.7.0-morakot-r1',repository:'ArduPilot/ardupilot',
+  sourceSha:'1511f27194f1dcc3728270883047bdf022b3fd53',ref:'Copter-4.7.0',version:'4.7.0',
+  vehicleVersions:{copter:'4.7.0',plane:'4.7.0',rover:'4.7.0',sub:'4.7.0'},
+  templateKey:'ardupilot-4.7',templateRevision:templateRevisions['ardupilot-4.7'],editableFiles:boardFiles['ardupilot-4.7'],
+  description:'4.7.0 · Morakot',note:'官方 Copter-4.7.0 固定來源；Morakot 配置獨立保存，Copter 雲端驗證後仍需實機驗收'});
+// New profiles add an explicit output target without changing historical profile digests.
+for(const prior of profiles.filter(t=>t.id==='px4')){
+  prior.available=false;
+  profiles.push({...prior,available:true,profileId:prior.profileId!.replace(/-r1$/,'-r2'),adapterRevision:'morakot-v2-r2',
+    fields:[{key:'buildTarget',label:'編譯內容',kind:'choice',default:'firmware',choices:[{value:'firmware',label:'主韌體 (.px4)'},{value:'bootloader',label:'Bootloader (.bin / .elf)'}]},...prior.fields],
+    note:'主韌體與 Bootloader 分別編譯；Bootloader 使用 SWD／DFU，不能當成主韌體安裝'});
+}
 export function displayVersion(target: Target,variant?:string): string {
   return (target.vehicleVersions?.[variant || ''] || target.version || 'Development').replace(/-\d+-g[0-9a-f]+$/,'');
 }

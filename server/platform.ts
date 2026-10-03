@@ -133,7 +133,7 @@ export class Platform {
         if (!actual || actual.size !== a.size || (actual.digest && actual.digest !== `sha256:${a.sha256}`)) throw new ValidationError('Release 資產缺失或雜湊不符');
         return { ...a, url: `https://github.com/${this.repository}/releases/download/${tag}/${encodeURIComponent(a.name)}` };
       });
-      return { ...status, phase: 'success', provenance: manifest, assets, releaseUrl: `https://github.com/${this.repository}/releases/tag/${tag}` };
+      return { ...status, phase: 'success', provenance: manifest, assets, releaseName:release.name || tag, releaseUrl: `https://github.com/${this.repository}/releases/tag/${tag}` };
     } catch (e) {
       if (e instanceof ValidationError || e instanceof GitHubError && e.status === 404) return { ...status, phase: 'failed', message: e instanceof ValidationError ? e.message : '工作完成但找不到對應 Release' };
       throw e;

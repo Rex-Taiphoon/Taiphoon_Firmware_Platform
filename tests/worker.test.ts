@@ -17,7 +17,7 @@ test('Workers 實際 runtime 完成 OAuth、原生 fetch 與私人配置授權',
     const entry=join(dir,'worker.js');
     await build({entryPoints:['server/worker.ts'],outfile:entry,bundle:true,platform:'neutral',format:'esm',external:['node:crypto']});
     let exchanges=0, calls=0,snapshot:any;
-    runtime=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:entry,compatibilityDate:'2026-10-03',compatibilityFlags:['nodejs_compat'],bindings:{...env,GITHUB_WORKFLOW_REF:'platform-build-v2-4'},
+    runtime=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:entry,compatibilityDate:'2026-10-03',compatibilityFlags:['nodejs_compat'],bindings:{...env,GITHUB_WORKFLOW_REF:'platform-build-v2-5'},
       outboundService: async (request: Request) => {
         const url=new URL(request.url);
         if (url.href==='https://github.com/login/oauth/access_token') { exchanges++;return Response.json({access_token:'FAKE_RUNTIME_TOKEN',expires_in:3600}); }
@@ -50,12 +50,12 @@ test('Workers 實際 runtime 完成 OAuth、原生 fetch 與私人配置授權',
     assert.equal(templates.status,200);
     assert.ok((await templates.json() as any).files['default.px4board'].includes('CONFIG_BOARD'));
     assert.equal(exchanges,1);assert.equal(calls,3);
-    const profile='px4-1.17.0-morakot-r1';
+    const profile='px4-1.17.0-morakot-r2';
     const versioned=await runtime.dispatchFetch(env.API_ORIGIN+'/templates/px4?profile='+profile,{headers:{Origin:env.PAGES_ORIGIN,Authorization:'Bearer '+session}});
     assert.equal(versioned.status,200);const data=await versioned.json() as any;
     assert.equal(data.templateRevision,targetFor('px4',profile).templateRevision);
     const response=await runtime.dispatchFetch(env.API_ORIGIN+'/requests',{method:'POST',headers:{Origin:env.PAGES_ORIGIN,Authorization:'Bearer '+session,'Content-Type':'application/json'},body:JSON.stringify({requestId:'12345678-1234-4123-8123-123456789abc',config:{...configFor('px4',profile),files:data.files}})});
     assert.equal(response.status,201);assert.equal(snapshot.profileDigest,profileDigest(targetFor('px4',profile)));
-    assert.equal(snapshot.recipeRef,'platform-build-v2-4');assert.equal(snapshot.recipeSha,'b'.repeat(40));
+    assert.equal(snapshot.recipeRef,'platform-build-v2-5');assert.equal(snapshot.recipeSha,'b'.repeat(40));
   } finally { await runtime?.dispose();rmSync(dir,{recursive:true,force:true}); }
 });

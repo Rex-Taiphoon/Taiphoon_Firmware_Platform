@@ -18,7 +18,8 @@ const safe=(s:string)=>s.replace(/[\r\n]/g,' ').replace(/[\\`*_{}[\]<>!|]/g,c=>'
 export function releaseDescription(saved:SavedRequest,manifest:Provenance,repository:string):string {
   const changes=configurationChanges(saved),t=targetFor(saved.config.target,saved.config.profileId);
   const format=(v:string|boolean)=>typeof v==='boolean'?(v?'啟用':'停用'):v;
-  const lines=[`${t.name} ${manifest.displayFirmwareVersion || manifest.firmwareVersion} · Morakot · ${manifest.variant} · ${manifest.buildDate}（台灣時間）`, '', '修改摘要（相對於此版本的 Morakot 預設配置）：'];
+  const lines=[`${t.name} ${manifest.displayFirmwareVersion || manifest.firmwareVersion} · Morakot${manifest.variant && manifest.variant!=='Morakot'?' · '+manifest.variant:''} · ${manifest.buildDate}（台灣時間）`,
+    ...(manifest.variant==='bootloader'?['Bootloader：BIN／ELF，Flash 位址 0x08000000；使用 SWD／DFU，主韌體更新入口不適用。']:[]), '', '修改摘要（相對於此版本的 Morakot 預設配置）：'];
   for(const o of changes.options)lines.push(`- ${safe(o.label)}：${safe(format(o.before))} → ${safe(format(o.after))}`);
   let excerptBudget=3500;
   for(const f of changes.files){

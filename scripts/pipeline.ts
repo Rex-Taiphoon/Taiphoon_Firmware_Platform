@@ -7,7 +7,7 @@ import { validateConfig, canonicalConfig, requestId, sha, verifyProvenance, rele
 import { targetFor } from '../shared/catalog.ts';
 import { plan, applySettings } from './adapter.ts';
 import { gitSafetyEnvironment } from './container.ts';
-import { verifyPx4, verifyArduPilot } from './packages.ts';
+import { verifyPx4, verifyArduPilot, verifyPx4Bootloader } from './packages.ts';
 import { checkSnapshot } from '../server/build-profile.ts';
 import { releaseDescription, configurationChanges } from './release-notes.ts';
 import {transferDigest} from './transfer.ts';
@@ -95,10 +95,12 @@ if (mode === 'prepare') {
     toolchain = run(compiler, ['--version'], source, true).split('\n')[0];
   }
   mkdirSync('output', { recursive: true });
-  const directory = c.target === 'ardupilot' ? join(source, 'build/Morakot/bin') : c.target === 'px4' ? join(source, 'build/morakot_v6_default') : join(source, 'obj');
-  const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? [`ardu${c.options.vehicle}.apj`,`ardu${c.options.vehicle}.bin`].includes(name) : c.target === 'px4' ? name === 'morakot_v6_default.px4' : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
+  const bootloader=c.target==='px4' && c.options.buildTarget==='bootloader';
+  const directory = c.target === 'ardupilot' ? join(source, 'build/Morakot/bin') : c.target === 'px4' ? join(source, bootloader?'build/morakot_v6_bootloader':'build/morakot_v6_default') : join(source, 'obj');
+  const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? [`ardu${c.options.vehicle}.apj`,`ardu${c.options.vehicle}.bin`].includes(name) : c.target === 'px4' ? (bootloader?['morakot_v6_bootloader.bin','morakot_v6_bootloader.elf'].includes(name):name === 'morakot_v6_default.px4') : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
   if (!files.length) throw new Error('編譯成功但找不到目標產物');
-  if (c.target === 'px4') verifyPx4(readFileSync(join(directory,files[0])),s.sourceSha,target.version);
+  if (bootloader) verifyPx4Bootloader(readFileSync(join(directory,'morakot_v6_bootloader.bin')),readFileSync(join(directory,'morakot_v6_bootloader.elf')));
+  else if (c.target === 'px4') verifyPx4(readFileSync(join(directory,files[0])),s.sourceSha,target.version);
   if (c.target === 'ardupilot') verifyArduPilot(readFileSync(join(directory,`ardu${c.options.vehicle}.apj`)),readFileSync(join(directory,`ardu${c.options.vehicle}.bin`)),s.sourceSha);
   const buildRun=validateRunContext(JSON.parse(readFileSync('work/run.json','utf8')),expectedRun);
   const identity = releaseIdentity(s,Number(process.env.GITHUB_RUN_ID),Number(process.env.GITHUB_RUN_ATTEMPT),buildRun);
@@ -124,7 +126,13 @@ if (mode === 'prepare') {
   if (readdirSync('output').sort().join(',') !== expected.join(',')) throw new Error('產物包含未允許的檔案');
   for (const name of expected) if (!lstatSync(join('output', name)).isFile() || statSync(join('output', name)).size > 104857600) throw new Error('無效產物或大小超出限制');
   for (const asset of manifest.assets) if (digest(join('output', asset.name)) !== asset.sha256 || statSync(join('output', asset.name)).size !== asset.size) throw new Error('產物雜湊或大小不符');
-  if (s.config.target === 'px4') for (const asset of manifest.assets) verifyPx4(readFileSync(join('output',asset.name)),s.sourceSha,targetFor('px4',s.config.profileId).version);
+  if (s.config.target === 'px4') {
+    if(s.config.options.buildTarget==='bootloader'){
+      const bin=manifest.assets.find(a=>a.name.endsWith('.bin')),elf=manifest.assets.find(a=>a.name.endsWith('.elf'));
+      if(manifest.assets.length!==2 || !bin || !elf)throw new Error('Bootloader 必須包含 BIN 與 ELF');
+      verifyPx4Bootloader(readFileSync(join('output',bin.name)),readFileSync(join('output',elf.name)));
+    }else for (const asset of manifest.assets) verifyPx4(readFileSync(join('output',asset.name)),s.sourceSha,targetFor('px4',s.config.profileId).version);
+  }
   if (s.config.target === 'ardupilot') {
     const apj=manifest.assets.find(a=>a.name.endsWith('.apj')),bin=manifest.assets.find(a=>a.name.endsWith('.bin'));
     if(!apj||!bin)throw new Error('ArduPilot 缺少 APJ／BIN');

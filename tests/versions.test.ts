@@ -49,12 +49,12 @@ test('日期以真正的 Actions 建立時間及台灣時區決定，流水號�
 test('所有平台的新 Release 命名遵循同一規範，PX4 與 AM32 都不帶 hash',async()=>{
   for(const id of ['ardupilot','px4','betaflight','am32'] as const){
     const {p}=setup(),saved=await p.save(ID,configFor(id,defaultProfileId(id)));
-    saved.recipeRef='platform-build-v2-4';
+    saved.recipeRef='platform-build-v2-5';
     const identity=releaseIdentity(saved,71,1,{run_number:82,created_at:'2026-10-03T00:00:00Z'});
-    assert.match(identity.releaseTag,/^[A-Za-z0-9.]+(?:-beta\d+|-alpha)?-Morakot-20261003-82$/);
+    assert.match(identity.releaseTag,/^[A-Za-z0-9]+-[0-9.]+(?:-beta\d+|-alpha)?-Morakot-20261003-82$/);
     assert.ok(!/[0-9a-f]{8,}/.test(identity.releaseTag.replace('20261003','')));
-    if(id==='px4')assert.equal(identity.releaseTag,'PX41.18.0-beta1-Morakot-20261003-82');
-    if(id==='am32')assert.equal(identity.releaseTag,'AM322.20-Morakot-20261003-82');
+    if(id==='px4')assert.equal(identity.releaseTag,'PX4-1.18.0-beta1-Morakot-20261003-82');
+    if(id==='am32')assert.equal(identity.releaseTag,'AM32-2.20-Morakot-20261003-82');
   }
 });
 test('編譯從已驗證的 run 快照取得時間，不需要把 API token 帶進工具鏈',()=>{

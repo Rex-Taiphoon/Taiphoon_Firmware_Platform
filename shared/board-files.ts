@@ -5,6 +5,11 @@ export const boardFiles: Record<string,string[]> = {
     "hwdef-bl.dat",
     "hwdef.dat"
   ],
+  "ardupilot-4.7": [
+    "defaults.parm",
+    "hwdef-bl.dat",
+    "hwdef.dat"
+  ],
   "px4": [
     "bootloader.px4board",
     "default.px4board",
@@ -67,6 +72,7 @@ export const boardFiles: Record<string,string[]> = {
 };
 export const allowedHeaders: Record<string,string[]> = {
   "ardupilot": [],
+  "ardupilot-4.7": [],
   "px4": [
     "arch/board/board.h",
     "arm_internal.h",
@@ -206,6 +212,7 @@ export const lockedPx4Config: Record<string,string[]> = {
 };
 export const templateRevisions: Record<string,string> = {
   "ardupilot": "9bc041f425011e094bf410dcecf7cbe4184bf0dca38f12341bc8d96b687cc12c",
+  "ardupilot-4.7": "9bc041f425011e094bf410dcecf7cbe4184bf0dca38f12341bc8d96b687cc12c",
   "px4": "5f2b39ff9fa8f0f3238d426480e03011018079d4fb58e50eef6ccd53eaa8d3ff",
   "px4-1.17": "5f2b39ff9fa8f0f3238d426480e03011018079d4fb58e50eef6ccd53eaa8d3ff",
   "betaflight": "7a77fc6b39796446ff703e97adff0b57623e39c6e9259ece94ee159eef29d7b6",

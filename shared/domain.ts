@@ -29,7 +29,7 @@ export type Provenance = {
 export type BuildStatus = {
   phase: Phase; message?: string; runId?: number; runAttempt?: number;
   runUrl?: string; releaseUrl?: string; assets?: Asset[]; provenance?: Provenance;
-  canRetryDispatch?: boolean;
+  canRetryDispatch?: boolean; releaseName?: string;
 };
 export class ValidationError extends Error {}
 export function object(value: unknown): Record<string, unknown> {
@@ -68,7 +68,7 @@ export function canonicalConfig(value: unknown): string { return JSON.stringify(
 export type RunIdentity = { id:number; run_attempt:number; head_sha:string; run_number?:number; created_at?:string;run_started_at?:string };
 export function releaseIdentity(saved: Snapshot, runId: number, attempt: number, run?: Pick<RunIdentity,'run_number'|'created_at'|'run_started_at'>) {
   const t = targetFor(saved.config.target,saved.config.profileId), date = saved.createdAt.slice(0,10).replaceAll('-','');
-  const variant = String(saved.config.options.vehicle || saved.config.options.variant || 'Morakot');
+  const variant = String(saved.config.options.vehicle || saved.config.options.variant || (saved.config.options.buildTarget==='bootloader'?'bootloader':'Morakot'));
   const firmwareVersion = t.vehicleVersions?.[variant] || t.version || t.sourceSha.slice(0,12);
   const version = firmwareVersion.replace(/[^A-Za-z0-9._-]/g,'-');
   if (saved.config.schemaVersion===2) {
@@ -77,11 +77,12 @@ export function releaseIdentity(saved: Snapshot, runId: number, attempt: number,
     if(!Number.isFinite(Date.parse(started)))throw new ValidationError('工作開始時間無效');
     const taiwanDate=new Date(Date.parse(started)+8*3600000).toISOString().slice(0,10);
     const oldNaming=['platform-build-v2-1','platform-build-v2-2','platform-build-v2-3'].includes(saved.recipeRef || '');
+    const separated=!['platform-build-v2-1','platform-build-v2-2','platform-build-v2-3','platform-build-v2-4'].includes(saved.recipeRef || '');
     const readable=displayVersion(t,variant);
     return {firmwareVersion, variant, profileId:t.profileId, profileDigest:saved.profileDigest, recipeSha:saved.recipeSha,
       ...(!oldNaming ? {displayFirmwareVersion:readable} : {}),
       buildDate:taiwanDate, buildStartedAt:started, buildNumber:run.run_number,
-      releaseTag:`${t.name}${oldNaming?version:readable}-Morakot-${taiwanDate.replaceAll('-','')}-${run.run_number}${attempt>1?'-r'+attempt:''}`};
+      releaseTag:`${t.name}${separated?'-':''}${oldNaming?version:readable}-Morakot${variant==='bootloader'?'-Bootloader':''}-${taiwanDate.replaceAll('-','')}-${run.run_number}${attempt>1?'-r'+attempt:''}`};
   }
   return { firmwareVersion, buildDate: saved.createdAt.slice(0,10), variant,
     releaseTag: `${t.id}-${variant}-${version}-${date}-${runId}-${attempt}` };

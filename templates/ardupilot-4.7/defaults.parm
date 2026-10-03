@@ -1,0 +1,2 @@
+# Morakot MSP DisplayPort default; build options override this value.
+OSD_TYPE2 5

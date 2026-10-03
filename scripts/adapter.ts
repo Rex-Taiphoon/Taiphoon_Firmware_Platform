@@ -8,7 +8,7 @@ export function plan(value: unknown, definitionDir: string): Command[] {
   const c = validateConfig(value);
   switch (c.target) {
     case 'ardupilot': return [{ executable: './waf', args: ['configure', '--board', 'Morakot', '--default-parameters=platform-defaults.parm', '--extra-hwdef=platform-extra.dat'] }, { executable: './waf', args: [String(c.options.vehicle)] }];
-    case 'px4': return [{ executable: 'bash', args: ['Tools/setup/ubuntu.sh', '--no-sim-tools'] }, { executable: 'make', args: ['-j2', 'morakot_v6_default', `PX4_CMAKE_BUILD_TYPE=${c.options.buildType === 'Release' ? 'MinSizeRel' : 'Debug'}`] }];
+    case 'px4': return [{ executable: 'bash', args: ['Tools/setup/ubuntu.sh', '--no-sim-tools'] }, { executable: 'make', args: ['-j2', c.options.buildTarget==='bootloader'?'morakot_v6_bootloader':'morakot_v6_default', `PX4_CMAKE_BUILD_TYPE=${c.options.buildType === 'Release' ? 'MinSizeRel' : 'Debug'}`] }];
     case 'betaflight': return [{ executable: 'make', args: ['arm_sdk_install', `BETAFLIGHT_CONFIG=${definitionDir}`] }, { executable: 'make', args: ['-j2', 'fwo', 'CONFIG=MORAKOT', `BETAFLIGHT_CONFIG=${definitionDir}`] }];
     case 'am32': return [{ executable: 'make', args: ['arm_sdk_install'] }, { executable: 'make', args: ['-j2', `MORAKOT_4IN1_ESC_60A_${c.options.variant}`] }];
     case 'inav': throw new Error('INAV MORAKOT 定義尚未提供，不能編譯');
@@ -57,6 +57,7 @@ export function applySettings(config: Config, source: string, definition: string
     const prototype = JSON.parse(readFileSync(join(dir,'firmware.prototype'),'utf8'));
     if (!c.files?.['firmware.prototype']) { prototype.description = 'Taiphoon Morakot v6 firmware (bootloader board ID 1105)'; prototype.summary = 'MORAKOT-V6'; }
     writeFileSync(join(dir,'firmware.prototype'),JSON.stringify(prototype,null,2));
+    if(c.options.buildTarget==='bootloader')return; // Preserve the selected bootloader board configuration verbatim.
     const path = join(dir, 'default.px4board');
     let text = readFileSync(path, 'utf8');
     for (const [name,enabled] of [['CONFIG_MODULES_UXRCE_DDS_CLIENT',c.options.dds],['CONFIG_DRIVERS_OSD_ATXXXX',c.options.osd],['CONFIG_BOARD_LTO',c.options.lto]] as const) {
