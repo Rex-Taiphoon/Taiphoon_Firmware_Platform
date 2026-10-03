@@ -11,7 +11,7 @@ test('韌體 workflow 手動觸發，編譯 job 無發布權限與秘密', () =>
   assert.equal(w.on.workflow_dispatch.inputs.publish_release.default, false);
   assert.equal(w.jobs.publish.if, 'inputs.publish_release');
   assert.equal(w.jobs.publish.steps.find((s: any) => s.run === 'node scripts/pipeline.ts publish').env.PUBLISH_RELEASE, '${{ inputs.publish_release }}');
-  assert.deepEqual(w.jobs.build.permissions, { contents: 'read' });
+  assert.deepEqual(w.jobs.build.permissions, { contents: 'read', actions: 'read' });
   assert.equal(w.jobs.publish.permissions.contents, 'write'); assert.deepEqual(w.jobs.publish.needs, ['validate', 'build']);
   assert.ok(!JSON.stringify(w.jobs.build).includes('secrets.'));
   assert.ok(w.jobs.build.steps.filter((s: any) => s.uses?.startsWith('actions/checkout')).every((s: any) => s.with['persist-credentials'] === false));

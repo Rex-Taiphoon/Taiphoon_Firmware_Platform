@@ -10,6 +10,7 @@ import {profileDigest} from '../server/build-profile.ts';
 import {templateData} from '../server/templates-data.ts';
 import {configurationChanges,releaseDescription} from '../scripts/release-notes.ts';
 import {applySettings} from '../scripts/adapter.ts';
+import {validateRunContext} from '../scripts/run-context.ts';
 import {createHandler} from '../server/handler.ts';
 import {seal} from '../server/crypto.ts';
 import {FakeGitHub,env,ID,ID2,manifestFor} from './fixtures.ts';
@@ -34,7 +35,15 @@ test('日期以真正的 Actions 建立時間及台灣時區決定，流水號�
   const run={run_number:82,created_at:'2026-10-03T16:30:00Z'};
   assert.equal(releaseIdentity(saved,71,1,run).releaseTag,'ArduPilot4.6.3-Morakot-20261004-82');
   assert.equal(releaseIdentity(saved,71,2,run).releaseTag,'ArduPilot4.6.3-Morakot-20261004-82-r2');
+  assert.equal(releaseIdentity(saved,71,2,{...run,run_started_at:'2026-10-05T00:00:00Z'}).releaseTag,'ArduPilot4.6.3-Morakot-20261005-82-r2');
   assert.throws(()=>releaseIdentity(saved,71,1),/日期/);
+});
+test('編譯從已驗證的 run 快照取得時間，不需要把 API token 帶進工具鏈',()=>{
+  const run={id:71,run_attempt:2,run_number:82,head_sha:'b'.repeat(40),created_at:'2026-10-03T00:00:00Z'};
+  const expected={id:71,attempt:2,number:82,sha:'b'.repeat(40)};
+  assert.deepEqual(validateRunContext(run,expected),run);
+  for(const mismatch of [{id:72},{attempt:1},{number:83},{sha:'c'.repeat(40)}])assert.throws(()=>validateRunContext(run,{...expected,...mismatch}));
+  assert.throws(()=>validateRunContext({...run,created_at:'bad'},expected));
 });
 test('來源、設定雜湊、流程 tag 或實際 workflow SHA 被替換時拒絕',async()=>{
   for(const field of ['sourceSha','profileDigest','recipeSha']){

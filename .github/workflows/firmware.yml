@@ -30,6 +30,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      actions: read
     outputs:
       source_repository: ${{ steps.prepare.outputs.source_repository }}
       source_sha: ${{ steps.prepare.outputs.source_sha }}
@@ -53,6 +54,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

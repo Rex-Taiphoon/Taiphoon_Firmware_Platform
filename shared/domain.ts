@@ -64,17 +64,19 @@ export function sha(value: unknown): string {
   return value;
 }
 export function canonicalConfig(value: unknown): string { return JSON.stringify(validateConfig(value)); }
-export type RunIdentity = { id:number; run_attempt:number; head_sha:string; run_number?:number; created_at?:string };
-export function releaseIdentity(saved: Snapshot, runId: number, attempt: number, run?: Pick<RunIdentity,'run_number'|'created_at'>) {
+export type RunIdentity = { id:number; run_attempt:number; head_sha:string; run_number?:number; created_at?:string;run_started_at?:string };
+export function releaseIdentity(saved: Snapshot, runId: number, attempt: number, run?: Pick<RunIdentity,'run_number'|'created_at'|'run_started_at'>) {
   const t = targetFor(saved.config.target,saved.config.profileId), date = saved.createdAt.slice(0,10).replaceAll('-','');
   const variant = String(saved.config.options.vehicle || saved.config.options.variant || 'Morakot');
   const firmwareVersion = t.vehicleVersions?.[variant] || t.version || t.sourceSha.slice(0,12);
   const version = firmwareVersion.replace(/[^A-Za-z0-9._-]/g,'-');
   if (saved.config.schemaVersion===2) {
     if (!run?.created_at || !Number.isSafeInteger(run.run_number) || run.run_number!<=0 || !Number.isFinite(Date.parse(run.created_at))) throw new ValidationError('新版工作缺少編譯日期或流水號');
-    const taiwanDate=new Date(Date.parse(run.created_at)+8*3600000).toISOString().slice(0,10);
+    const started=run.run_started_at || run.created_at;
+    if(!Number.isFinite(Date.parse(started)))throw new ValidationError('工作開始時間無效');
+    const taiwanDate=new Date(Date.parse(started)+8*3600000).toISOString().slice(0,10);
     return {firmwareVersion, variant, profileId:t.profileId, profileDigest:saved.profileDigest, recipeSha:saved.recipeSha,
-      buildDate:taiwanDate, buildStartedAt:run.created_at, buildNumber:run.run_number,
+      buildDate:taiwanDate, buildStartedAt:started, buildNumber:run.run_number,
       releaseTag:`${t.name}${version}-Morakot-${taiwanDate.replaceAll('-','')}-${run.run_number}${attempt>1?'-r'+attempt:''}`};
   }
   return { firmwareVersion, buildDate: saved.createdAt.slice(0,10), variant,

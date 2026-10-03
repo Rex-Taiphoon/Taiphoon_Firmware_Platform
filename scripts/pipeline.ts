@@ -10,6 +10,7 @@ import { gitSafetyEnvironment } from './container.ts';
 import { verifyPx4, verifyArduPilot } from './packages.ts';
 import { checkSnapshot } from '../server/build-profile.ts';
 import { releaseDescription, configurationChanges } from './release-notes.ts';
+import {validateRunContext} from './run-context.ts';
 
 const mode = process.argv[2];
 if (process.env.GITHUB_ACTIONS !== 'true') throw new Error('此腳本僅供經確認的 GitHub Actions 工作執行；本地請使用測試');
@@ -18,6 +19,7 @@ const id = requestId(process.env.REQUEST_ID), configSha = sha(process.env.CONFIG
 const repository = process.env.GITHUB_REPOSITORY!;
 const source = resolve('work/source'), definition = resolve('work/definition');
 const github = new GitHub(process.env.GITHUB_TOKEN || '');
+const expectedRun={id:Number(process.env.GITHUB_RUN_ID),attempt:Number(process.env.GITHUB_RUN_ATTEMPT),number:Number(process.env.GITHUB_RUN_NUMBER),sha:process.env.GITHUB_SHA!};
 function transferDigest() { return createHash('sha256').update(JSON.stringify(readdirSync('output').sort().map(name=>({name,sha256:digest(join('output',name))})))).digest('hex'); }
 function digest(path: string) { return createHash('sha256').update(readFileSync(path)).digest('hex'); }
 async function snapshot(): Promise<SavedRequest> {
@@ -40,6 +42,8 @@ function verifyCheckout(path: string, expected: string) { if (run('git', ['rev-p
 
 if (mode === 'prepare') {
   const s = await snapshot(); mkdirSync('work', { recursive: true }); writeFileSync('work/snapshot.json', JSON.stringify(s));
+  const context=validateRunContext(await github.call(`/repos/${repository}/actions/runs/${process.env.GITHUB_RUN_ID}`),expectedRun);
+  writeFileSync('work/run.json',JSON.stringify(context));
   const output = { source_repository: s.sourceRepository, source_sha: s.sourceSha, definition_repository: s.definitionRepository || s.sourceRepository, definition_sha: s.definitionSha || s.sourceSha };
   for (const [key, value] of Object.entries(output)) appendFileSync(process.env.GITHUB_OUTPUT!, `${key}=${value}\n`);
 } else if (mode === 'build') {
@@ -91,7 +95,7 @@ if (mode === 'prepare') {
   if (!files.length) throw new Error('編譯成功但找不到目標產物');
   if (c.target === 'px4') verifyPx4(readFileSync(join(directory,files[0])),s.sourceSha,target.version);
   if (c.target === 'ardupilot') verifyArduPilot(readFileSync(join(directory,`ardu${c.options.vehicle}.apj`)),readFileSync(join(directory,`ardu${c.options.vehicle}.bin`)),s.sourceSha);
-  const buildRun=await github.call(`/repos/${repository}/actions/runs/${process.env.GITHUB_RUN_ID}`);
+  const buildRun=validateRunContext(JSON.parse(readFileSync('work/run.json','utf8')),expectedRun);
   const identity = releaseIdentity(s,Number(process.env.GITHUB_RUN_ID),Number(process.env.GITHUB_RUN_ATTEMPT),buildRun);
   const names = files.map(name => ({ original:name, renamed:`${identity.releaseTag}${name.slice(name.lastIndexOf('.'))}` }));
   for (const {original,renamed} of names) { if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,100}$/.test(renamed) || !lstatSync(join(directory, original)).isFile()) throw new Error('無效產物'); copyFileSync(join(directory, original), join('output', renamed)); }
@@ -106,7 +110,7 @@ if (mode === 'prepare') {
   if(!/^[0-9a-f]{64}$/.test(process.env.TRANSFER_HASH || '') || transferDigest()!==process.env.TRANSFER_HASH)throw new Error('同次編譯的產物轉交雜湊不符');
   const s = await snapshot();
   const runInfo = await github.call(`/repos/${repository}/actions/runs/${process.env.GITHUB_RUN_ID}`);
-  const actualRun = { id: Number(process.env.GITHUB_RUN_ID), run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT), head_sha: sha(process.env.GITHUB_SHA), run_number:runInfo.run_number, created_at:runInfo.created_at };
+  const actualRun = { id: Number(process.env.GITHUB_RUN_ID), run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT), head_sha: sha(process.env.GITHUB_SHA), run_number:runInfo.run_number, created_at:runInfo.created_at,run_started_at:runInfo.run_started_at };
   if (runInfo.id !== actualRun.id || runInfo.run_attempt !== actualRun.run_attempt || runInfo.head_sha !== actualRun.head_sha || runInfo.display_title !== `Firmware ${id}`) throw new Error('工作版本不一致');
   const manifest = verifyProvenance(JSON.parse(readFileSync('output/provenance.json', 'utf8')), s, actualRun, createHash('sha256').update(canonicalConfig(s.config)).digest('hex'));
   if (canonicalConfig(JSON.parse(readFileSync('output/config.json', 'utf8'))) !== canonicalConfig(s.config)) throw new Error('設定快照不一致');
