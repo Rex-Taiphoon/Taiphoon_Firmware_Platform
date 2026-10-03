@@ -1,8 +1,44 @@
 # 驗證紀錄
 
+## 最新：官方版本來源與 PX4 Bootloader（2026-10-04）
+
+52 項 Node 測試、TypeScript、Vite production build 與 API bundle 全部通過。測試包含版本白名單、來源／快照／流程核對、原生 Workers OAuth、私人版本模板、正式版預設、4.6.3 載具版本限制、歷史 Release 重新命名相容性及 ARM ELF／BIN Bootloader 的向量、位址、容量與映像一致性，並拒絕變更 Bootloader board ID／主韌體起點／Flash 邊界。React HTML 驗證版本選單不顯示配置 r1／r2／r3，僅保留原平台版本。
+
+新增官方版本均在真正的 GitHub Actions 編譯、發布並下載驗證；表格記錄實際使用的工作與 Release。每一組都核對 config.json、changes.json、source／config／profile／recipe SHA、run／attempt、台灣日期、產物大小與 SHA-256。
+
+| 平台／原版本與目標 | Actions | Release |
+| --- | --- | --- |
+| ArduPilot 4.7.0 Copter | [37134506605](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37134506605) | [ArduPilot-4.7.0-Morakot-20261003-10](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/ArduPilot-4.7.0-Morakot-20261003-10) |
+| PX4 1.17.0 Bootloader | [37135207625](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37135207625) | [PX4-1.17.0-Morakot-Bootloader-20261003-20](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX4-1.17.0-Morakot-Bootloader-20261003-20) |
+| ArduPilot 4.7.1 Copter | [37136084420](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136084420) | [ArduPilot-4.7.1-Morakot-20261004-11](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/ArduPilot-4.7.1-Morakot-20261004-11) |
+| PX4 1.18.0-rc1 主韌體 | [37136091113](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136091113) | [PX4-1.18.0-rc1-Morakot-20261004-22](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX4-1.18.0-rc1-Morakot-20261004-22) |
+| PX4 1.18.0-rc1 Bootloader | [37136098454](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136098454) | [PX4-1.18.0-rc1-Morakot-Bootloader-20261004-23](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX4-1.18.0-rc1-Morakot-Bootloader-20261004-23) |
+| Betaflight 2026.6.2 MORAKOT | [37136105116](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136105116) | [Betaflight-2026.6.2-Morakot-20261004-11](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/Betaflight-2026.6.2-Morakot-20261004-11) |
+| Betaflight 2026.6.1 MORAKOT | [37136112614](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136112614) | [Betaflight-2026.6.1-Morakot-20261004-12](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/Betaflight-2026.6.1-Morakot-20261004-12) |
+| AM32 2.21 G071 | [37136119936](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136119936) | [AM32-2.21-Morakot-20261004-8](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/AM32-2.21-Morakot-20261004-8) |
+| AM32 2.20 G071 | [37136126841](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136126841) | [AM32-2.20-Morakot-20261004-9](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/AM32-2.20-Morakot-20261004-9) |
+| PX4 1.18.0-beta2 主韌體 | [37136133791](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136133791) | [PX4-1.18.0-beta2-Morakot-20261004-24](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX4-1.18.0-beta2-Morakot-20261004-24) |
+| PX4 1.18.0-beta2 Bootloader | [37136140468](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136140468) | [PX4-1.18.0-beta2-Morakot-Bootloader-20261004-25](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX4-1.18.0-beta2-Morakot-Bootloader-20261004-25) |
+| PX4 1.18.0-beta1 主韌體 | [37136147147](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136147147) | [PX4-1.18.0-beta1-Morakot-20261004-26](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX4-1.18.0-beta1-Morakot-20261004-26) |
+| PX4 1.18.0-beta1 Bootloader | [37136155513](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37136155513) | [PX4-1.18.0-beta1-Morakot-Bootloader-20261004-27](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/PX4-1.18.0-beta1-Morakot-Bootloader-20261004-27) |
+
+- 官方 PX4 rc1／beta2／beta1 的主韌體映像分別為 1,640,772／1,650,772／1,649,196 bytes，均低於 1,703,936 bytes；board ID 1105、完整來源 hash 與內嵌官方版本均核對一致。
+- 四個可選 PX4 版本的 Bootloader 均已實際驗證。1.17 映像 43,248 bytes；官方 rc1／beta2／beta1 均 43,328 bytes，低於 128 KiB。ARM ELF／BIN load segments 一致；Flash 起點 0x08000000、主韌體起点 0x08020000。
+- ArduPilot Copter 4.7.0／4.7.1 的映像分別為 1,567,556／1,567,436 bytes，board ID 1210，APJ／BIN 完全一致，低於 1,703,936 bytes。4.6.3 原來源 SHA 已確認與官方 Copter-4.6.3 相同；新 4.6.3 profile 使用官方 repo 並禁止版本不一致的 Sub 選項，原 source／template／工具鏈與既有已驗證 Copter 相同。
+- Betaflight 2026.6.2／2026.6.1 的 HEX checksum、內嵌版本、下載 hash 均通過。
+- 官方 AM32 2.21／2.20 G071 的 BIN／HEX 位址範圍與重建映像完全一致，HEX checksum 均通過，Flash 起點 0x08001000，BIN 59,392 bytes；來源 Inc/version.h 與選定版本一致。
+
+首次 ArduPilot 4.7.0 因棄用的外部羅盤 define 失敗，修正獨立配置後通過。首次 PX4 Bootloader 向量驗證發現附件 idle stack 750 bytes 造成未對齊，修正為 idle／init stack 768／3200 bytes 與 linker 8-byte 對齊；未對齊產物沒有發布。舊模板／失敗快照保留，不覆寫歷史。
+
+新 PX4 beta1 使用官方 tag fd132028513748238be1762e57893bbca9fcf179；原 fork 在 tag 之後的 6 個 commit 不帶入新的官方 beta1 工作。旧 fork 的成功 Release 仍保留歷史來源，不宣稱為精確官方 tag build。
+
+新工作流程固定 platform-build-v2-11，其完整 commit 由每次快照保存；已完成工作使用其快照中的 v2-6／v2-8／v2-9 固定 tag。API 與 Pages 均部署最新版本；Pages 公開 repo 僅前端資產，配置與 Releases 留在私人 repo。既有五個 Release 只調整顯示名稱；下載 tag／產物及 provenance 維持不變，其他新 Release 名稱與檔名都有平台／版本分隔符。
+
+沒有進行本地韌體編譯、WSL 或硬體刷寫／飛行驗收。ArduPilot 的 Plane／Rover／Sub、AM32 L431 CAN 及更多功能組合未逐一測試。INAV 仍待 Morakot 定義。瀏覽器網站存取被保存的封鎖設定限制，這次前端使用靜態 React 測試及 Pages 部署 CI，未宣稱新版瀏覽器互動驗收已通過。新增上游 release 需先核對固定來源與 Morakot 相容性、完成雲端驗證，再維護清單，不自動編譯未驗證的 upstream main。
+
 ## 最新：多版本與統一命名（2026-10-03）
 
-51 項 Node 測試、TypeScript、Vite production build、API bundle 與公開前端邊界檢查通過。測試含 schema-1／2 相容、按版本的私人模板、原生 Workers OAuth 後保存 schema-2、來源／profile／recipe 篡改拒絕、台灣跨日／重跑命名、修改摘要、精確 cache key／可信 job digest、介面 HTML 的版本選項與移除 OSD／示意圖。
+52 項 Node 測試、TypeScript、Vite production build、API bundle 與公開前端邊界檢查通過。測試含 schema-1／2 相容、按版本的私人模板、原生 Workers OAuth 後保存 schema-2、來源／profile／recipe 篡改拒絕、台灣跨日／重跑命名、修改摘要、精確 cache key／可信 job digest、介面 HTML 的版本選項與移除 OSD／示意圖。
 
 五組真實 Actions 全部成功，Platform.status 皆為 success。逐一下載核對韌體 SHA-256、config.json 與 changes.json，provenance 的 source／config／profile／recipe SHA、run／attempt、時間／流水號均符合該次工作。驗證使用完整模板加不影響硬體設定的註解，測試修改確實保存與套用。
 

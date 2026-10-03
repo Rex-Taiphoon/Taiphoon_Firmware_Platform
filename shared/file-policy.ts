@@ -73,6 +73,17 @@ export function validateFiles(target: FirmwareId, value: unknown, profileId?: st
       if (path === 'defaults.parm') for (const line of text.split('\n').map(l => l.split('#')[0].trim()).filter(Boolean)) if (!/^[A-Z][A-Z0-9_]+\s+-?\d+(?:\.\d+)?$/.test(line)) throw new Error('預設參數必須使用名稱與數值');
     } else if (/\.(?:c|cpp|h)$/.test(path)) {
       validateC(templateKey,text);
+      if(target==='px4'){
+        const code=withoutComments(text),protectedNames=['BOARD_TYPE','APP_LOAD_ADDRESS','BOARD_FLASH_SECTORS','BOARD_FLASH_SIZE'];
+        const definitions=[...code.matchAll(/^\s*#\s*(define|undef)\s+(BOARD_TYPE|APP_LOAD_ADDRESS|BOARD_FLASH_SECTORS|BOARD_FLASH_SIZE)\b([^\n]*)$/gm)];
+        if(path==='src/hw_config.h'){
+          const expected=['1105','0x08020000','(14)','(16*128*1024)'];
+          for(let i=0;i<protectedNames.length;i++){
+            const found=definitions.filter(m=>m[2]===protectedNames[i]);
+            if(found.length!==1 || found[0][1]!=='define' || found[0][3].replace(/\s/g,'')!==expected[i])throw new Error('必須保留 Morakot Bootloader board ID、主韌體起點與 Flash 容量');
+          }
+        }else if(definitions.length)throw new Error('其他板級檔案不能覆寫 Bootloader 硬體識別與 Flash 邊界');
+      }
       if (target === 'betaflight' && path==='config.h') {
         if (/[$`;{}]/.test(withoutComments(text))) throw new Error('config.h 只允許硬體定義與 C 前處理設定');
         if (!/#define\s+FC_TARGET_MCU\s+STM32H743\b/.test(text) || !/#define\s+BOARD_NAME\s+MORAKOT\b/.test(text)) throw new Error('必須保留 MORAKOT MCU 與板名');

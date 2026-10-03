@@ -12,7 +12,7 @@
     "GITHUB_OWNER": "Rex-Taiphoon",
     "GITHUB_REPO": "Taiphoon_Firmware_Platform",
     "GITHUB_CONFIG_BRANCH": "main",
-    "GITHUB_WORKFLOW_REF": "platform-build-v2-10",
+    "GITHUB_WORKFLOW_REF": "platform-build-v2-11",
     "GITHUB_WORKFLOW_FILE": "firmware.yml",
     "GITHUB_APP_CLIENT_ID": "Iv23liV3ceZiJQO10SpK"
   },

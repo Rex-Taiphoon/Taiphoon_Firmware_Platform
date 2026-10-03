@@ -27,6 +27,8 @@ test('兩個 PX4 版本只接受受控 bootloader 目標，與主韌體有獨立
     const files=templateData[targetFor('px4',profile).templateKey!];
     assert.match(files['nuttx-config/bootloader/defconfig'],/^CONFIG_IDLETHREAD_STACKSIZE=768$/m);
     assert.match(files['nuttx-config/scripts/bootloader_script.ld'],/ALIGN\(8\);\n\s*_ebss/);
+    config.files={...files};validateConfig(config);
+    for(const change of [files['src/hw_config.h'].replace('1105 // For Test','1106'),files['src/hw_config.h'].replace('0x08020000','0x08000000'),files['src/hw_config.h']+'\n#undef BOARD_TYPE\n'])assert.throws(()=>validateConfig({...config,files:{...files,'src/hw_config.h':change}}));
     assert.equal(plan(config,'definition')[1].args[1],'morakot_v6_bootloader');
     assert.throws(()=>validateConfig({...config,options:{...config.options,buildTarget:'upload; bash'}}));
     const saved={config,recipeRef:'platform-build-v2-5',createdAt:'2026-10-03T00:00:00Z'} as any;
