@@ -40,6 +40,7 @@ export class Platform {
       if (existing.value.actor !== this.actor || canonicalConfig(existing.value.config) !== canonicalConfig(config)) throw new PlatformError(409, '此 request ID 已保存其他設定，請建立新的工作');
       return this.saved(id);
     }
+    if(config.schemaVersion===1 && this.env.GITHUB_WORKFLOW_REF.startsWith('platform-build-v2-'))throw new ValidationError('請選擇韌體版本，使用新版設定建立工作；舊工作仍可查詢');
     const snapshot: Snapshot = { requestId: id, actor: this.actor, createdAt: new Date().toISOString(), sourceRepository: target.repository, sourceSha: target.sourceSha, config,
       ...(target.definition ? { definitionRepository: target.definition.repository, definitionSha: target.definition.sha } : {}) };
     if(config.schemaVersion===2){
@@ -80,6 +81,7 @@ export class Platform {
     const location = `dispatches/${id}.json`, prior = await this.file(location);
     if (prior && prior.value.configSha !== saved.configSha) throw new PlatformError(409, '已保存的設定版本被變更，請建立新工作');
     if (prior && prior.value.status !== 'rejected') return this.status(id);
+    if(saved.config.schemaVersion===1 && this.env.GITHUB_WORKFLOW_REF.startsWith('platform-build-v2-'))throw new ValidationError('請選擇新版韌體版本並另存設定後編譯');
     if(saved.recipeRef){
       const tag=await this.github.call(this.path(`git/ref/tags/${saved.recipeRef}`));
       if(tag.object?.type!=='commit'||tag.object.sha!==saved.recipeSha)throw new ValidationError('編譯流程 tag 已變更，拒絕使用不同版本');

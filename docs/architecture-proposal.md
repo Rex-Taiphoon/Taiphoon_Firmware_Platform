@@ -1,6 +1,6 @@
 # 線上設定與雲端編譯平台：第一版提案
 
-狀態：Pages 專用公開 repository 與 Cloudflare Workers API 已部署，GitHub App 已建立，三平台配置編輯及獨立編譯／發布流程已實作。使用者已確認安裝、登入與讀取私人配置，並從 Pages 保存了真實設定；目錄編輯器的正式瀏覽器操作仍待人工確認；各雲端工作結果見 verification.md。
+狀態：Pages 專用公開 repository 與 Cloudflare Workers API 已部署，GitHub App 已建立，四平台配置編輯、多版本設定及獨立編譯／發布流程已實作。使用者已確認安裝、登入與讀取私人配置，並從 Pages 保存了真實設定；目錄編輯器的正式瀏覽器操作仍待人工確認；各雲端工作結果見 verification.md。
 
 ## 現況與範圍
 
@@ -84,3 +84,8 @@ adapter 接受已驗證的設定檔與受控目標，輸出到指定產物目錄
 - [保存 repository 檔案 API](https://docs.github.com/en/rest/repos/contents#create-or-update-file-contents)
 - [觸發 workflow API 與所需權限](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event)
 - [Actions workflow 與 job 權限](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions)
+
+
+## 多版本擴充
+
+已加入 profiles、schema-2 快照與固定流程 tag／SHA。Pages 按版本讀取私人模板；API、Actions、Release 驗證皆依該次不可變版本設定，保留 schema-1 相容。Actions cache 僅暫存同次 run／attempt／SHA 的輸出，publish 比對 build job 摘要後獨立檢查套件；最終結果仍在 Releases。無新增資料庫或常駐編譯機。詳見 versions.md。

@@ -6,7 +6,7 @@ Pages → Workers API → 私人配置快照 → GitHub Actions → 私人 Relea
 
 選擇平台，再選韌體版本。每個版本載入自己的配置模板、允許的檔案與功能選項。切換版本會先提示，確認後載入該版本預設配置；不自動把舊檔覆蓋到新版本。先保存要保留的修改。
 
-新版沒有獨立 OSD 控制項。ArduPilot 的 hwdef／defaults.parm、PX4 的 default.px4board、Betaflight 的 config.h 決定 OSD 行為；其餘功能選項會由 adapter 套用。既有 schema-1 工作仍保持原本的 OSD 選項語義，不改寫舊快照。
+新版沒有獨立 OSD 控制項。ArduPilot 的 hwdef／defaults.parm、PX4 的 default.px4board、Betaflight 的 config.h 決定 OSD 行為；其餘功能選項會由 adapter 套用。既有 schema-1 工作仍保持原本的 OSD 選項語義，不改寫舊快照；可查詢與恢復，但要開始新的編譯，需選擇新版 profile 並另存，確保所有新 Release 符合統一命名。
 
 ## 版本資料
 

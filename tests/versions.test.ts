@@ -21,7 +21,7 @@ function setup(){
   return {gh,p:new Platform({...env,GITHUB_WORKFLOW_REF:'platform-build-v2-1'},gh,'Rex-Taiphoon')};
 }
 test('新舊快照並存；新增版本不會破壞舊工作與 Release 下载',async()=>{
-  const {gh,p}=setup();const legacy=await p.save(ID,configFor('ardupilot'));await p.dispatch(ID);gh.publish(legacy);
+  const {gh,p}=setup();const old=new Platform(env,gh,'Rex-Taiphoon');const legacy=await old.save(ID,configFor('ardupilot'));await old.dispatch(ID);gh.publish(legacy);
   const prior=(await p.status(ID)).releaseUrl;
   const newer=await p.save(ID2,configFor('ardupilot',defaultProfileId('ardupilot')));
   assert.equal(newer.config.schemaVersion,2);assert.equal(newer.recipeSha,gh.run.head_sha);
@@ -29,6 +29,14 @@ test('新舊快照並存；新增版本不會破壞舊工作與 Release 下载',
   await p.dispatch(ID2);assert.equal((await p.saved(ID2)).config.profileId,newer.config.profileId);
   assert.equal(gh.dispatchInputs.config_sha,newer.configSha);gh.publish(newer);
   assert.equal((await p.status(ID2)).phase,'success');assert.match((await p.status(ID2)).releaseUrl!,/ArduPilot4.6.3-Morakot-20261004-82$/);
+});
+test('新 API 僅建立具名版本工作；舊設定可恢復與冪等讀取，不能生成旧命名新 Release',async()=>{
+  const {gh,p}=setup(),old=new Platform(env,gh,'Rex-Taiphoon');
+  await old.save(ID,configFor('ardupilot'));
+  assert.equal((await p.save(ID,configFor('ardupilot'))).config.schemaVersion,1);
+  assert.equal((await p.saved(ID)).config.schemaVersion,1);
+  await assert.rejects(p.save(ID2,configFor('ardupilot')),/選擇韌體版本/);
+  await assert.rejects(p.dispatch(ID),/新版/);
 });
 test('日期以真正的 Actions 建立時間及台灣時區決定，流水號和重跑各自識別',async()=>{
   const {p}=setup(),saved=await p.save(ID,configFor('ardupilot',defaultProfileId('ardupilot')));
