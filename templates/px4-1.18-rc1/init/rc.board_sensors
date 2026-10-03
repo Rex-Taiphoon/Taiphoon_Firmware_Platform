@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# PX4 FMUv6C specific board sensors init
+#------------------------------------------------------------------------------
+board_adc start
+
+# Internal SPI Bus 1 ICM45686p ROTATION_ROLL_180_YAW_90
+icm45686 -b 1 -s -R 2 start
+#icm45686 -b 1 -s -R 2 -f 25 start
+
+# 以(100kHz) 啟動 BMP388
+#bmp388 start -I -b 1 -f 100000
+bmp388 start -I -b 1
+
+# 以(100kHz) 啟動 iis2mdc  ROTATION_YAW_270
+#iis2mdc start -I -b 1 -R 6 -f 100000
+iis2mdc start -I -b 1 -R 6
+
+# MAX7456 OSD
+#if ! param compare OSD_ATXXXX_CFG 0
+#then
+#	atxxxx start -s
+#fi
+# External mag
+# qmc5883l -I -b 1 -a 0x0D start
+# qmc5883l -X start
+# rm3100 -X start

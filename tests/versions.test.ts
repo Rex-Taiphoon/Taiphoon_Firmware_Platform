@@ -61,7 +61,7 @@ test('所有平台的新 Release 命名遵循同一規範，PX4 與 AM32 都不�
     assert.match(identity.releaseTag,/^[A-Za-z0-9]+-[0-9.]+(?:-beta\d+|-alpha)?-Morakot-20261003-82$/);
     assert.ok(!/[0-9a-f]{8,}/.test(identity.releaseTag.replace('20261003','')));
     if(id==='px4')assert.equal(identity.releaseTag,'PX4-1.18.0-beta1-Morakot-20261003-82');
-    if(id==='am32')assert.equal(identity.releaseTag,'AM32-2.20-Morakot-20261003-82');
+    if(id==='am32')assert.equal(identity.releaseTag,'AM32-2.21-Morakot-20261003-82');
   }
 });
 test('編譯從已驗證的 run 快照取得時間，不需要把 API token 帶進工具鏈',()=>{

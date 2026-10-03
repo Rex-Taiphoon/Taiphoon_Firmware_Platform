@@ -65,7 +65,7 @@ if (mode === 'prepare') {
     const tag=target.upstreamTag || 'v1.18.0-beta1',tagSha=target.upstreamTagSha || 'd90ac5b79200c44895c03ee7c284b20b80ecf75d';
     run('git',['fetch','--depth=1','https://github.com/PX4/PX4-Autopilot.git',`refs/tags/${tag}:refs/tags/${tag}`],source);
     const described=run('git',['describe','--tags','--long','--abbrev=10','--match',tag,'HEAD'],source,true).trim();
-    const expected=target.version==='1.17.0'?'v1.17.0-0-g'+target.sourceSha.slice(0,10):'v'+target.version;
+    const expected=/-\d+-g[0-9a-f]+$/.test(target.version || '')?'v'+target.version:tag+'-0-g'+target.sourceSha.slice(0,10);
     if (run('git',['rev-parse',`refs/tags/${tag}`],source,true).trim()!==tagSha || described!==expected)throw new Error('PX4 上游版本 tag 與來源歷史不一致');
   }
   applySettings(c, source, definition);

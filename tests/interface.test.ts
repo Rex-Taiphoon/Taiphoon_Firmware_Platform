@@ -21,7 +21,7 @@ test('正式介面提供版本選擇，顯示乾淨版本名稱，不含 OSD 控
       assert.match(html,/aria-label="韌體版本"/);assert.ok(!html.includes('hero-detail'));assert.ok(!html.includes('class="orbit"'));assert.ok(!html.includes('編譯 OSD'));assert.ok(!html.includes('第二組 OSD'));
       assert.equal((html.match(/<img /g)||[]).length,1);assert.match(html,/taiphoon-logo.png/);
       const px4=renderToStaticMarkup(createElement(VersionSelect,{target:'px4',selected:defaultProfileId('px4'),disabled:false,onSelect:()=>{}}));
-      assert.match(px4,/1\.17\.0/);assert.match(px4,/1\.18\.0-beta1/);assert.ok(!px4.includes('-6-g186ad6d691 ·'));
+      assert.match(px4,/1\.17\.0/);assert.match(px4,/1\.18\.0-beta1/);assert.ok(!px4.includes('-6-g186ad6d691 ·'));assert.match(px4,/1\.18\.0-rc1/);assert.ok(!/>[^<]* · r[123]/.test(px4));
       const am32=renderToStaticMarkup(createElement(VersionSelect,{target:'am32',selected:defaultProfileId('am32'),disabled:false,onSelect:()=>{}}));assert.match(am32,/2\.20/);assert.ok(!am32.includes('eec483e880bc'));
     }finally{if(prior)Object.defineProperty(globalThis,'location',prior);else Reflect.deleteProperty(globalThis,'location');}
   }finally{rmSync(directory,{recursive:true,force:true});}

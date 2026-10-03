@@ -22,7 +22,7 @@ test('Bootloader BIN／ELF 核對內容、向量、MCU、Flash 起點與保留�
   assert.throws(()=>verifyPx4Bootloader(Buffer.alloc(131073),packagePair().elf));
 });
 test('兩個 PX4 版本只接受受控 bootloader 目標，與主韌體有獨立名稱',()=>{
-  for(const profile of ['px4-1.17.0-morakot-r3','px4-1.18.0-beta1-6-g186ad6d691-morakot-r3']){
+  for(const profile of ['px4-1.17.0-morakot-r3','px4-1.18.0-beta1-morakot']){
     const config=configFor('px4',profile);config.options.buildTarget='bootloader';
     const files=templateData[targetFor('px4',profile).templateKey!];
     assert.match(files['nuttx-config/bootloader/defconfig'],/^CONFIG_IDLETHREAD_STACKSIZE=768$/m);

@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# board specific defaults
+#------------------------------------------------------------------------------
+
+# Not use MAV_2 as Ethernet interface
+# param set-default MAV_2_CONFIG 1000
+# param set-default MAV_2_BROADCAST 1
+# param set-default MAV_2_MODE 0
+# param set-default MAV_2_RADIO_CTL 0
+# param set-default MAV_2_RATE 100000
+# param set-default MAV_2_REMOTE_PRT 14550
+# param set-default MAV_2_UDP_PRT 14550
+
+param set-default BAT1_V_DIV 18.1
+
+param set-default BAT1_A_PER_V 36.367515152
+
+#param set-default OSD_ATXXXX_CFG 1
+
+# uXRCE-DDS client via Ethernet
+param set-default UXRCE_DDS_CFG 1000
+param set-default UXRCE_DDS_PRT 8888
+param set-default UXRCE_DDS_AG_IP -1062731512
