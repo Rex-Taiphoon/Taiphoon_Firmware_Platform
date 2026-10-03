@@ -31,6 +31,32 @@ export const boardFiles: Record<string,string[]> = {
     "src/timer_config.cpp",
     "src/usb.c"
   ],
+  "px4-1.17": [
+    "bootloader.px4board",
+    "default.px4board",
+    "firmware.prototype",
+    "init/rc.board_defaults",
+    "init/rc.board_sensors",
+    "nuttx-config/Kconfig",
+    "nuttx-config/bootloader/defconfig",
+    "nuttx-config/include/board.h",
+    "nuttx-config/include/board_dma_map.h",
+    "nuttx-config/nsh/defconfig",
+    "nuttx-config/scripts/bootloader_script.ld",
+    "nuttx-config/scripts/script.ld",
+    "src/CMakeLists.txt",
+    "src/board_config.h",
+    "src/bootloader_main.c",
+    "src/can.c",
+    "src/hw_config.h",
+    "src/i2c.cpp",
+    "src/init.c",
+    "src/led.c",
+    "src/sdio.c",
+    "src/spi.cpp",
+    "src/timer_config.cpp",
+    "src/usb.c"
+  ],
   "betaflight": [
     "config.c",
     "config.h"
@@ -42,6 +68,56 @@ export const boardFiles: Record<string,string[]> = {
 export const allowedHeaders: Record<string,string[]> = {
   "ardupilot": [],
   "px4": [
+    "arch/board/board.h",
+    "arm_internal.h",
+    "bl.h",
+    "board_config.h",
+    "board_dma_map.h",
+    "chip.h",
+    "debug.h",
+    "drivers/drv_board_led.h",
+    "drivers/drv_hrt.h",
+    "drivers/drv_sensor.h",
+    "errno.h",
+    "lib/drivers/device/Device.hpp",
+    "nuttx/analog/adc.h",
+    "nuttx/board.h",
+    "nuttx/can/can.h",
+    "nuttx/compiler.h",
+    "nuttx/config.h",
+    "nuttx/mm/gran.h",
+    "nuttx/mmcsd.h",
+    "nuttx/sdio.h",
+    "nuttx/spi/spi.h",
+    "nuttx/usb/usbdev.h",
+    "nuttx/usb/usbdev_trace.h",
+    "parameters/flashparams/flashfs.h",
+    "px4_arch/i2c_hw_description.h",
+    "px4_arch/io_timer.h",
+    "px4_arch/io_timer_hw_description.h",
+    "px4_arch/spi_hw_description.h",
+    "px4_platform/board_determine_hw_info.h",
+    "px4_platform/board_dma_alloc.h",
+    "px4_platform/gpio.h",
+    "px4_platform_common/board_common.h",
+    "px4_platform_common/i2c.h",
+    "px4_platform_common/init.h",
+    "px4_platform_common/px4_config.h",
+    "stdbool.h",
+    "stdint.h",
+    "stdio.h",
+    "stm32_can.h",
+    "stm32_gpio.h",
+    "stm32_otg.h",
+    "stm32_rcc.h",
+    "stm32_sdmmc.h",
+    "stm32_uart.h",
+    "string.h",
+    "sys/types.h",
+    "syslog.h",
+    "systemlib/px4_macros.h"
+  ],
+  "px4-1.17": [
     "arch/board/board.h",
     "arm_internal.h",
     "bl.h",
@@ -127,4 +203,77 @@ export const lockedPx4Config: Record<string,string[]> = {
     "CONFIG_ARCH_CHIP_STM32H7=y",
     "CONFIG_INIT_ENTRYPOINT=\"nsh_main\""
   ]
+};
+export const templateRevisions: Record<string,string> = {
+  "ardupilot": "9bc041f425011e094bf410dcecf7cbe4184bf0dca38f12341bc8d96b687cc12c",
+  "px4": "5f2b39ff9fa8f0f3238d426480e03011018079d4fb58e50eef6ccd53eaa8d3ff",
+  "px4-1.17": "5f2b39ff9fa8f0f3238d426480e03011018079d4fb58e50eef6ccd53eaa8d3ff",
+  "betaflight": "7a77fc6b39796446ff703e97adff0b57623e39c6e9259ece94ee159eef29d7b6",
+  "am32": "4b8dc45abeeb5fdb615793c634469156f623a494bb97e7933a53af6014d8c22e"
+};
+export const lockedProfileConfig: Record<string,Record<string,string[]>> = {
+  "px4": {
+    "bootloader.px4board": [
+      "CONFIG_BOARD_TOOLCHAIN=\"arm-none-eabi\"",
+      "CONFIG_BOARD_ARCHITECTURE=\"cortex-m7\"",
+      "CONFIG_BOARD_ROMFSROOT=\"\""
+    ],
+    "default.px4board": [
+      "CONFIG_BOARD_TOOLCHAIN=\"arm-none-eabi\"",
+      "CONFIG_BOARD_ARCHITECTURE=\"cortex-m7\"",
+      "CONFIG_ARCH_CHIP_STM32H7=y"
+    ],
+    "nuttx-config/bootloader/defconfig": [
+      "CONFIG_ARCH_BOARD_CUSTOM=y",
+      "CONFIG_ARCH_BOARD_CUSTOM_DIR=\"../../../../boards/morakot/v6/nuttx-config\"",
+      "CONFIG_ARCH_BOARD_CUSTOM_DIR_RELPATH=y",
+      "CONFIG_ARCH_BOARD_CUSTOM_NAME=\"px4\"",
+      "CONFIG_ARCH_CHIP=\"stm32h7\"",
+      "CONFIG_ARCH_CHIP_STM32H743VI=y",
+      "CONFIG_ARCH_CHIP_STM32H7=y",
+      "CONFIG_INIT_ENTRYPOINT=\"bootloader_main\""
+    ],
+    "nuttx-config/nsh/defconfig": [
+      "CONFIG_ARCH_BOARD_CUSTOM=y",
+      "CONFIG_ARCH_BOARD_CUSTOM_DIR=\"../../../../boards/morakot/v6/nuttx-config\"",
+      "CONFIG_ARCH_BOARD_CUSTOM_DIR_RELPATH=y",
+      "CONFIG_ARCH_BOARD_CUSTOM_NAME=\"px4\"",
+      "CONFIG_ARCH_CHIP=\"stm32h7\"",
+      "CONFIG_ARCH_CHIP_STM32H743VI=y",
+      "CONFIG_ARCH_CHIP_STM32H7=y",
+      "CONFIG_INIT_ENTRYPOINT=\"nsh_main\""
+    ]
+  },
+  "px4-1.17": {
+    "bootloader.px4board": [
+      "CONFIG_BOARD_TOOLCHAIN=\"arm-none-eabi\"",
+      "CONFIG_BOARD_ARCHITECTURE=\"cortex-m7\"",
+      "CONFIG_BOARD_ROMFSROOT=\"\""
+    ],
+    "default.px4board": [
+      "CONFIG_BOARD_TOOLCHAIN=\"arm-none-eabi\"",
+      "CONFIG_BOARD_ARCHITECTURE=\"cortex-m7\"",
+      "CONFIG_ARCH_CHIP_STM32H7=y"
+    ],
+    "nuttx-config/bootloader/defconfig": [
+      "CONFIG_ARCH_BOARD_CUSTOM=y",
+      "CONFIG_ARCH_BOARD_CUSTOM_DIR=\"../../../../boards/morakot/v6/nuttx-config\"",
+      "CONFIG_ARCH_BOARD_CUSTOM_DIR_RELPATH=y",
+      "CONFIG_ARCH_BOARD_CUSTOM_NAME=\"px4\"",
+      "CONFIG_ARCH_CHIP=\"stm32h7\"",
+      "CONFIG_ARCH_CHIP_STM32H743VI=y",
+      "CONFIG_ARCH_CHIP_STM32H7=y",
+      "CONFIG_INIT_ENTRYPOINT=\"bootloader_main\""
+    ],
+    "nuttx-config/nsh/defconfig": [
+      "CONFIG_ARCH_BOARD_CUSTOM=y",
+      "CONFIG_ARCH_BOARD_CUSTOM_DIR=\"../../../../boards/morakot/v6/nuttx-config\"",
+      "CONFIG_ARCH_BOARD_CUSTOM_DIR_RELPATH=y",
+      "CONFIG_ARCH_BOARD_CUSTOM_NAME=\"px4\"",
+      "CONFIG_ARCH_CHIP=\"stm32h7\"",
+      "CONFIG_ARCH_CHIP_STM32H743VI=y",
+      "CONFIG_ARCH_CHIP_STM32H7=y",
+      "CONFIG_INIT_ENTRYPOINT=\"nsh_main\""
+    ]
+  }
 };

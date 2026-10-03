@@ -8,6 +8,8 @@ import { targetFor } from '../shared/catalog.ts';
 import { plan, applySettings } from './adapter.ts';
 import { gitSafetyEnvironment } from './container.ts';
 import { verifyPx4, verifyArduPilot } from './packages.ts';
+import { checkSnapshot } from '../server/build-profile.ts';
+import { releaseDescription, configurationChanges } from './release-notes.ts';
 
 const mode = process.argv[2];
 if (process.env.GITHUB_ACTIONS !== 'true') throw new Error('此腳本僅供經確認的 GitHub Actions 工作執行；本地請使用測試');
@@ -21,7 +23,9 @@ async function snapshot(): Promise<SavedRequest> {
   const file = await github.call(`/repos/${repository}/contents/requests/${id}.json?ref=${configSha}`);
   if (file.encoding !== 'base64' || file.size > 524288) throw new Error('無效的設定快照');
   const s = JSON.parse(Buffer.from(file.content, 'base64').toString()) as Snapshot;
-  const c = validateConfig(s.config), target = targetFor(c.target);
+  const c = validateConfig(s.config), target = targetFor(c.target,c.profileId);
+  checkSnapshot(s);
+  if(c.schemaVersion===2 && s.recipeSha!==process.env.GITHUB_SHA)throw new Error('Actions 編譯流程與快照版本不一致');
   if (process.env.EXPECTED_TARGET && c.target !== process.env.EXPECTED_TARGET) throw new Error('此工作流程不接受其他平台的設定');
   if (!target.available || s.requestId !== id || s.sourceRepository !== target.repository || s.sourceSha !== target.sourceSha || s.definitionRepository !== target.definition?.repository || s.definitionSha !== target.definition?.sha) throw new Error('設定與受控來源不一致');
   return { ...s, config: c, configSha };
@@ -40,20 +44,24 @@ if (mode === 'prepare') {
 } else if (mode === 'build') {
   const s = JSON.parse(readFileSync('work/snapshot.json', 'utf8')) as SavedRequest;
   if (s.configSha !== configSha || s.requestId !== id) throw new Error('設定版本不一致');
-  const c = validateConfig(s.config); const target = targetFor(c.target);
+  checkSnapshot(s);
+  if(s.config.schemaVersion===2 && s.recipeSha!==process.env.GITHUB_SHA)throw new Error('Actions 編譯流程與快照版本不一致');
+  const c = validateConfig(s.config); const target = targetFor(c.target,c.profileId);
   if (s.sourceSha !== target.sourceSha || s.sourceRepository !== target.repository) throw new Error('非受控原始碼');
   verifyCheckout(source, s.sourceSha); if (s.definitionSha) verifyCheckout(definition, s.definitionSha);
   if (c.target === 'px4') {
     // The Morakot fork does not publish the upstream release tags. Fetch only the
     // verified upstream tag; the firmware source remains the pinned Morakot SHA.
-    run('git',['fetch','--depth=1','https://github.com/PX4/PX4-Autopilot.git','refs/tags/v1.18.0-beta1:refs/tags/v1.18.0-beta1'],source);
-    if (run('git',['rev-parse','refs/tags/v1.18.0-beta1'],source,true).trim() !== 'd90ac5b79200c44895c03ee7c284b20b80ecf75d' ||
-        run('git',['describe','--tags','--long','--abbrev=10','--match','v1.18.0-beta1','HEAD'],source,true).trim() !== 'v'+target.version) throw new Error('PX4 上游版本 tag 與來源歷史不一致');
+    const tag=target.upstreamTag || 'v1.18.0-beta1',tagSha=target.upstreamTagSha || 'd90ac5b79200c44895c03ee7c284b20b80ecf75d';
+    run('git',['fetch','--depth=1','https://github.com/PX4/PX4-Autopilot.git',`refs/tags/${tag}:refs/tags/${tag}`],source);
+    const described=run('git',['describe','--tags','--long','--abbrev=10','--match',tag,'HEAD'],source,true).trim();
+    const expected=target.version==='1.17.0'?'v1.17.0-0-g'+target.sourceSha.slice(0,10):'v'+target.version;
+    if (run('git',['rev-parse',`refs/tags/${tag}`],source,true).trim()!==tagSha || described!==expected)throw new Error('PX4 上游版本 tag 與來源歷史不一致');
   }
   applySettings(c, source, definition);
   let toolchain = '';
   if (c.target === 'ardupilot' || c.target === 'px4') {
-    const image = c.target === 'ardupilot' ? 'ardupilot/ardupilot-dev-chibios:v0.2.0' : 'ghcr.io/px4/px4-dev:v1.17.0-rc2';
+    const image = target.image || (c.target === 'ardupilot' ? 'ardupilot/ardupilot-dev-chibios:v0.2.0' : 'ghcr.io/px4/px4-dev:v1.17.0-rc2');
     run('docker', ['pull', image], process.cwd());
     const imageDigest = run('docker', ['inspect', '--format={{index .RepoDigests 0}}', image], process.cwd(), true).trim();
     const imageEnvironment: string[] = JSON.parse(run('docker', ['inspect', '--format={{json .Config.Env}}', image], process.cwd(), true));
@@ -63,7 +71,8 @@ if (mode === 'prepare') {
     const gitEnvironment = gitSafetyEnvironment(source, submodules).flatMap(value => ['-e', value]);
     // Preserve the official image's user, HOME and Python environment.
     const dockerArgs = ['run', '--rm', '-e', `PATH=${c.target === 'ardupilot' ? '/opt/gcc-arm-none-eabi-10/bin:' : ''}${imagePath}`, ...gitEnvironment, '-v', `${source}:/source`, '-w', '/source', image];
-    toolchain = run('docker', [...dockerArgs, 'arm-none-eabi-gcc', '--version'], process.cwd(), true).split('\n')[0] + `; ${imageDigest}`;
+    const compilerOutput=run('docker', [...dockerArgs, 'arm-none-eabi-gcc', '--version'], process.cwd(), true);
+    toolchain = (compilerOutput.split('\n').find(line=>line.includes('arm-none-eabi-gcc')) || compilerOutput.split('\n')[0]) + `; ${imageDigest}`;
     if (c.target === 'ardupilot') {
       for (const args of [['configure','--board','Morakot','--bootloader'],['bootloader']]) run('docker',[...dockerArgs,'./waf',...args],process.cwd());
       copyFileSync(join(source,'build/Morakot/bin/AP_Bootloader.bin'),join(source,'Tools/bootloaders/Morakot_bl.bin'));
@@ -81,35 +90,38 @@ if (mode === 'prepare') {
   if (!files.length) throw new Error('編譯成功但找不到目標產物');
   if (c.target === 'px4') verifyPx4(readFileSync(join(directory,files[0])),s.sourceSha,target.version);
   if (c.target === 'ardupilot') verifyArduPilot(readFileSync(join(directory,`ardu${c.options.vehicle}.apj`)),readFileSync(join(directory,`ardu${c.options.vehicle}.bin`)),s.sourceSha);
-  const identity = releaseIdentity(s,Number(process.env.GITHUB_RUN_ID),Number(process.env.GITHUB_RUN_ATTEMPT));
+  const buildRun=await github.call(`/repos/${repository}/actions/runs/${process.env.GITHUB_RUN_ID}`);
+  const identity = releaseIdentity(s,Number(process.env.GITHUB_RUN_ID),Number(process.env.GITHUB_RUN_ATTEMPT),buildRun);
   const names = files.map(name => ({ original:name, renamed:`${identity.releaseTag}${name.slice(name.lastIndexOf('.'))}` }));
   for (const {original,renamed} of names) { if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,100}$/.test(renamed) || !lstatSync(join(directory, original)).isFile()) throw new Error('無效產物'); copyFileSync(join(directory, original), join('output', renamed)); }
   const assets = names.map(({renamed:name}) => ({ name, size: statSync(join('output', name)).size, sha256: digest(join('output', name)) }));
   const manifest: Provenance = { schemaVersion: 1, requestId: id, configSha, sourceRepository: s.sourceRepository, sourceSha: s.sourceSha,
     ...(s.definitionSha ? { definitionRepository: s.definitionRepository, definitionSha: s.definitionSha } : {}),
     configDigest: createHash('sha256').update(canonicalConfig(c)).digest('hex'), workflowSha: sha(process.env.GITHUB_SHA), runId: Number(process.env.GITHUB_RUN_ID), runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT), target: c.target, toolchain, assets, ...identity };
+  writeFileSync('output/changes.json',JSON.stringify(configurationChanges(s),null,2)+'\n');
   writeFileSync('output/config.json', canonicalConfig(c) + '\n'); writeFileSync('output/provenance.json', JSON.stringify(manifest, null, 2) + '\n');
 } else if (mode === 'publish') {
   const s = await snapshot();
   const runInfo = await github.call(`/repos/${repository}/actions/runs/${process.env.GITHUB_RUN_ID}`);
-  const actualRun = { id: Number(process.env.GITHUB_RUN_ID), run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT), head_sha: sha(process.env.GITHUB_SHA) };
+  const actualRun = { id: Number(process.env.GITHUB_RUN_ID), run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT), head_sha: sha(process.env.GITHUB_SHA), run_number:runInfo.run_number, created_at:runInfo.created_at };
   if (runInfo.id !== actualRun.id || runInfo.run_attempt !== actualRun.run_attempt || runInfo.head_sha !== actualRun.head_sha || runInfo.display_title !== `Firmware ${id}`) throw new Error('工作版本不一致');
   const manifest = verifyProvenance(JSON.parse(readFileSync('output/provenance.json', 'utf8')), s, actualRun, createHash('sha256').update(canonicalConfig(s.config)).digest('hex'));
   if (canonicalConfig(JSON.parse(readFileSync('output/config.json', 'utf8'))) !== canonicalConfig(s.config)) throw new Error('設定快照不一致');
-  const expected = [...manifest.assets.map(a => a.name), 'provenance.json', 'config.json'].sort();
+  if(JSON.stringify(JSON.parse(readFileSync('output/changes.json','utf8')))!==JSON.stringify(configurationChanges(s)))throw new Error('修改摘要與配置不一致');
+  const expected = [...manifest.assets.map(a => a.name), 'provenance.json', 'config.json', 'changes.json'].sort();
   if (readdirSync('output').sort().join(',') !== expected.join(',')) throw new Error('產物包含未允許的檔案');
   for (const name of expected) if (!lstatSync(join('output', name)).isFile() || statSync(join('output', name)).size > 104857600) throw new Error('無效產物或大小超出限制');
   for (const asset of manifest.assets) if (digest(join('output', asset.name)) !== asset.sha256 || statSync(join('output', asset.name)).size !== asset.size) throw new Error('產物雜湊或大小不符');
-  if (s.config.target === 'px4') for (const asset of manifest.assets) verifyPx4(readFileSync(join('output',asset.name)),s.sourceSha,targetFor('px4').version);
+  if (s.config.target === 'px4') for (const asset of manifest.assets) verifyPx4(readFileSync(join('output',asset.name)),s.sourceSha,targetFor('px4',s.config.profileId).version);
   if (s.config.target === 'ardupilot') {
     const apj=manifest.assets.find(a=>a.name.endsWith('.apj')),bin=manifest.assets.find(a=>a.name.endsWith('.bin'));
     if(!apj||!bin)throw new Error('ArduPilot 缺少 APJ／BIN');
     verifyArduPilot(readFileSync(join('output',apj.name)),readFileSync(join('output',bin.name)),s.sourceSha);
   }
-  const tag = releaseIdentity(s,actualRun.id,actualRun.run_attempt).releaseTag;
+  const tag = releaseIdentity(s,actualRun.id,actualRun.run_attempt,actualRun).releaseTag;
   let existing: any; try { existing = await github.call(`/repos/${repository}/releases/tags/${tag}`); } catch (e) { if (!(e instanceof GitHubError && e.status === 404)) throw e; }
   if (existing) throw new Error('此 Release 已存在，不覆寫既有結果');
-  const release = await github.call(`/repos/${repository}/releases`, 'POST', { tag_name: tag, target_commitish: actualRun.head_sha, name: `${targetFor(s.config.target).name} ${manifest.firmwareVersion} · ${manifest.variant} · ${manifest.buildDate}`, draft: true, make_latest: 'false', body: `設定版本：${configSha}\n原始碼版本：${s.sourceRepository}@${s.sourceSha}\nActions：https://github.com/${repository}/actions/runs/${actualRun.id}\n${targetFor(s.config.target).note}\n完整版本與 SHA-256：provenance.json` });
+  const release = await github.call(`/repos/${repository}/releases`, 'POST', { tag_name: tag, target_commitish: actualRun.head_sha, name: s.config.schemaVersion===2?tag:`${targetFor(s.config.target).name} ${manifest.firmwareVersion} · ${manifest.variant} · ${manifest.buildDate}`, draft: true, make_latest: 'false', body:releaseDescription(s,manifest,repository) });
   for (const name of expected) {
     const response = await fetch(`https://uploads.github.com/repos/${repository}/releases/${release.id}/assets?name=${encodeURIComponent(name)}`, { method: 'POST', headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, 'Content-Type': 'application/octet-stream', 'X-GitHub-Api-Version': '2026-03-10' }, body: readFileSync(join('output', name)), signal: AbortSignal.timeout(120000) });
     if (!response.ok) throw new Error(`發布資產失敗（${response.status}）；保留 draft 供排查`);

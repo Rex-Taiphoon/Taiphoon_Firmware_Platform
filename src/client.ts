@@ -21,7 +21,7 @@ export class Client {
     if (!demoAllowed) throw new Error('正式網站不可使用示範模式');
     const prior = this.records.get(id);
     if (prior) { if (JSON.stringify(prior.saved.config) !== JSON.stringify(config)) throw new Error('設定衝突'); return prior.saved; }
-    const t = targetFor(config.target);
+    const t = targetFor(config.target,config.profileId);
     const saved: SavedRequest = { requestId: id, actor: 'local-demo', createdAt: new Date().toISOString(), config: structuredClone(config), configSha: 'd'.repeat(40), sourceRepository: t.repository, sourceSha: t.sourceSha, ...(t.definition ? { definitionRepository: t.definition.repository, definitionSha: t.definition.sha } : {}) };
     this.records.set(id, { saved }); return saved;
   }

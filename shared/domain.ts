@@ -1,16 +1,18 @@
 import { targets, targetFor, type FirmwareId } from './catalog.ts';
 import { validateFiles } from './file-policy.ts';
 export type Config = {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   target: FirmwareId;
+  profileId?: string;
   options: Record<string, string | boolean>;
   files?: Record<string, string>;
 };
-export function configFor(id: FirmwareId): Config { return { schemaVersion: 1, target: id, options: Object.fromEntries(targetFor(id).fields.map(f => [f.key, f.default])) }; }
+export function configFor(id: FirmwareId, profileId?: string): Config { return { schemaVersion: profileId ? 2 : 1, target: id, ...(profileId ? {profileId} : {}), options: Object.fromEntries(targetFor(id,profileId).fields.map(f => [f.key, f.default])) }; }
 export const defaultConfig = configFor('ardupilot');
 export type Snapshot = {
   requestId: string; actor: string; createdAt: string; sourceRepository: string;
   sourceSha: string; config: Config; definitionRepository?: string; definitionSha?: string;
+  profileDigest?: string; recipeRef?: string; recipeSha?: string;
 };
 export type SavedRequest = Snapshot & { configSha: string };
 export type Phase = 'saved' | 'dispatching' | 'queued' | 'validating' | 'building' | 'publishing' | 'success' | 'failed' | 'cancelled' | 'uncertain';
@@ -21,6 +23,7 @@ export type Provenance = {
   runId: number; runAttempt: number; target: FirmwareId; toolchain: string; assets: Asset[];
   definitionRepository?: string; definitionSha?: string;
   firmwareVersion?: string; buildDate?: string; releaseTag?: string; variant?: string;
+  profileId?: string; profileDigest?: string; recipeSha?: string; buildNumber?: number; buildStartedAt?: string;
 };
 export type BuildStatus = {
   phase: Phase; message?: string; runId?: number; runAttempt?: number;
@@ -36,9 +39,9 @@ function keys(value: Record<string, unknown>, expected: string[]) {
   if (Object.keys(value).sort().join(',') !== [...expected].sort().join(',')) throw new ValidationError('設定包含缺失或未允許的欄位');
 }
 export function validateConfig(value: unknown): Config {
-  const c = object(value); keys(c, ['schemaVersion', 'target', 'options', ...(c.files !== undefined ? ['files'] : [])]);
-  const target = targets.find(t => t.id === c.target);
-  if (c.schemaVersion !== 1 || !target) throw new ValidationError('不支援的設定版本或編譯目標');
+  const c = object(value); keys(c, ['schemaVersion', 'target', 'options', ...(c.schemaVersion===2 ? ['profileId'] : []), ...(c.files !== undefined ? ['files'] : [])]);
+  if (![1,2].includes(Number(c.schemaVersion)) || typeof c.schemaVersion !== 'number' || !targets.some(t=>t.id===c.target) || (c.schemaVersion===2 && typeof c.profileId!=='string')) throw new ValidationError('不支援的設定版本或編譯目標');
+  let target;try{target=targetFor(c.target,c.schemaVersion===2 ? c.profileId as string : undefined);}catch{throw new ValidationError('不支援的編譯版本設定');}
   const o = object(c.options); keys(o, target.fields.map(f => f.key));
   const options: Config['options'] = {};
   for (const f of target.fields) {
@@ -47,8 +50,8 @@ export function validateConfig(value: unknown): Config {
     options[f.key] = v as string | boolean;
   }
   let files: Record<string, string> | undefined;
-  try { if (c.files !== undefined) files = validateFiles(target.id, c.files); } catch (e) { throw new ValidationError((e as Error).message); }
-  const result: Config = { schemaVersion: 1, target: target.id, options, ...(files ? { files } : {}) };
+  try { if (c.files !== undefined) files = validateFiles(target.id, c.files, target.profileId); } catch (e) { throw new ValidationError((e as Error).message); }
+  const result: Config = { schemaVersion: c.schemaVersion as 1|2, target: target.id, ...(target.profileId ? {profileId:target.profileId} : {}), options, ...(files ? { files } : {}) };
   if (new TextEncoder().encode(JSON.stringify(result)).length > 196608) throw new ValidationError('完整配置快照超過 192 KiB');
   return result;
 }
@@ -61,17 +64,26 @@ export function sha(value: unknown): string {
   return value;
 }
 export function canonicalConfig(value: unknown): string { return JSON.stringify(validateConfig(value)); }
-export function releaseIdentity(saved: Snapshot, runId: number, attempt: number) {
-  const t = targetFor(saved.config.target), date = saved.createdAt.slice(0,10).replaceAll('-','');
+export type RunIdentity = { id:number; run_attempt:number; head_sha:string; run_number?:number; created_at?:string };
+export function releaseIdentity(saved: Snapshot, runId: number, attempt: number, run?: Pick<RunIdentity,'run_number'|'created_at'>) {
+  const t = targetFor(saved.config.target,saved.config.profileId), date = saved.createdAt.slice(0,10).replaceAll('-','');
   const variant = String(saved.config.options.vehicle || saved.config.options.variant || 'Morakot');
   const firmwareVersion = t.vehicleVersions?.[variant] || t.version || t.sourceSha.slice(0,12);
   const version = firmwareVersion.replace(/[^A-Za-z0-9._-]/g,'-');
+  if (saved.config.schemaVersion===2) {
+    if (!run?.created_at || !Number.isSafeInteger(run.run_number) || run.run_number!<=0 || !Number.isFinite(Date.parse(run.created_at))) throw new ValidationError('新版工作缺少編譯日期或流水號');
+    const taiwanDate=new Date(Date.parse(run.created_at)+8*3600000).toISOString().slice(0,10);
+    return {firmwareVersion, variant, profileId:t.profileId, profileDigest:saved.profileDigest, recipeSha:saved.recipeSha,
+      buildDate:taiwanDate, buildStartedAt:run.created_at, buildNumber:run.run_number,
+      releaseTag:`${t.name}${version}-Morakot-${taiwanDate.replaceAll('-','')}-${run.run_number}${attempt>1?'-r'+attempt:''}`};
+  }
   return { firmwareVersion, buildDate: saved.createdAt.slice(0,10), variant,
     releaseTag: `${t.id}-${variant}-${version}-${date}-${runId}-${attempt}` };
 }
-export function verifyProvenance(p: unknown, saved: SavedRequest, run: { id: number; run_attempt: number; head_sha: string }, digest: string): Provenance {
+export function verifyProvenance(p: unknown, saved: SavedRequest, run: RunIdentity, digest: string): Provenance {
   const m = object(p);
-  const identity = releaseIdentity(saved,run.id,run.run_attempt);
+  const identity = releaseIdentity(saved,run.id,run.run_attempt,run);
+  if(saved.config.schemaVersion===2 && run.head_sha!==saved.recipeSha)throw new ValidationError('工作流程版本不一致');
   if (Object.entries(identity).some(([key,v]) => m[key] !== v)) throw new ValidationError('韌體版本、日期或 Release 標籤不一致');
   if (m.schemaVersion !== 1 || m.requestId !== saved.requestId || m.configSha !== saved.configSha ||
       m.sourceSha !== saved.sourceSha || m.sourceRepository !== saved.sourceRepository || m.target !== saved.config.target ||

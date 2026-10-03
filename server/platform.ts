@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { canonicalConfig, requestId, sha, validateConfig, phaseForRun, verifyProvenance, releaseIdentity, ValidationError, type SavedRequest, type Snapshot, type BuildStatus } from '../shared/domain.ts';
 import { targetFor } from '../shared/catalog.ts';
 import { GitHub, GitHubError, type Environment } from './github.ts';
+import { checkSnapshot, profileDigest } from './build-profile.ts';
 
 type DispatchRecord = { actor: string; configSha: string; status: 'pending' | 'accepted' | 'rejected' | 'uncertain'; runId?: number };
 export class PlatformError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }
@@ -27,14 +28,12 @@ export class Platform {
     const s = file.value as Snapshot;
     if (s.actor !== this.actor) throw new PlatformError(403, '此工作屬於其他使用者');
     if (s.requestId !== id) throw new ValidationError('設定記錄 ID 不一致');
-    validateConfig(s.config); sha(s.sourceSha);
-    const target = targetFor(s.config.target);
-    if (s.sourceRepository !== target.repository || s.sourceSha !== target.sourceSha || s.definitionRepository !== target.definition?.repository || s.definitionSha !== target.definition?.sha) throw new ValidationError('設定來源不在受控目標中');
+    checkSnapshot(s);
     const commits = await this.github.call(this.path(`commits?path=requests/${id}.json&sha=${encodeURIComponent(this.env.GITHUB_CONFIG_BRANCH)}&per_page=1`));
     return { ...s, configSha: sha(commits[0]?.sha) };
   }
   async save(id: string, value: unknown): Promise<SavedRequest> {
-    requestId(id); const config = validateConfig(value); const target = targetFor(config.target);
+    requestId(id); const config = validateConfig(value); const target = targetFor(config.target,config.profileId);
     if (!target.available) throw new PlatformError(422, target.note);
     const existing = await this.file(`requests/${id}.json`);
     if (existing) {
@@ -43,6 +42,13 @@ export class Platform {
     }
     const snapshot: Snapshot = { requestId: id, actor: this.actor, createdAt: new Date().toISOString(), sourceRepository: target.repository, sourceSha: target.sourceSha, config,
       ...(target.definition ? { definitionRepository: target.definition.repository, definitionSha: target.definition.sha } : {}) };
+    if(config.schemaVersion===2){
+      const ref=this.env.GITHUB_WORKFLOW_REF;
+      if(!/^platform-build-v2-[a-z0-9-]+$/.test(ref))throw new PlatformError(503,'新版編譯流程尚未啟用');
+      const tag=await this.github.call(this.path(`git/ref/tags/${ref}`));
+      if(tag.object?.type!=='commit')throw new ValidationError('編譯流程必須使用固定 commit tag');
+      Object.assign(snapshot,{profileDigest:profileDigest(target),recipeRef:ref,recipeSha:sha(tag.object.sha)});
+    }
     try {
       const result = await this.write(`requests/${id}.json`, snapshot);
       return { ...snapshot, configSha: sha(result.commit.sha) };
@@ -70,17 +76,21 @@ export class Platform {
   }
   async dispatch(id: string): Promise<BuildStatus> {
     const saved = await this.saved(id);
-    const workflow = targetFor(saved.config.target).workflow || this.env.GITHUB_WORKFLOW_FILE;
+    const workflow = targetFor(saved.config.target,saved.config.profileId).workflow || this.env.GITHUB_WORKFLOW_FILE;
     const location = `dispatches/${id}.json`, prior = await this.file(location);
     if (prior && prior.value.configSha !== saved.configSha) throw new PlatformError(409, '已保存的設定版本被變更，請建立新工作');
     if (prior && prior.value.status !== 'rejected') return this.status(id);
+    if(saved.recipeRef){
+      const tag=await this.github.call(this.path(`git/ref/tags/${saved.recipeRef}`));
+      if(tag.object?.type!=='commit'||tag.object.sha!==saved.recipeSha)throw new ValidationError('編譯流程 tag 已變更，拒絕使用不同版本');
+    }
     const record: DispatchRecord = { actor: this.actor, configSha: saved.configSha, status: 'pending' };
     let lock: any;
     try { lock = await this.write(location, record, prior?.blob); }
     catch (e) { if (e instanceof GitHubError && [409, 422].includes(e.status)) return this.status(id); throw e; }
     try {
       const result = await this.github.call(this.path(`actions/workflows/${encodeURIComponent(workflow)}/dispatches`), 'POST', {
-        ref: this.env.GITHUB_WORKFLOW_REF, inputs: { request_id: id, config_sha: saved.configSha, publish_release: 'true' },
+        ref: saved.recipeRef || this.env.GITHUB_WORKFLOW_REF, inputs: { request_id: id, config_sha: saved.configSha, publish_release: 'true' },
       });
       const runId = result?.workflow_run_id;
       await this.write(location, { ...record, status: runId ? 'accepted' : 'uncertain', ...(runId ? { runId } : {}) }, lock.content.sha);
@@ -97,7 +107,7 @@ export class Platform {
     if (!file) return { phase: 'saved' };
     const record = file.value as DispatchRecord;
     if (record.actor !== this.actor || record.configSha !== saved.configSha) throw new PlatformError(409, '工作設定版本不一致');
-    const run = await this.findRun(id, targetFor(saved.config.target).workflow || this.env.GITHUB_WORKFLOW_FILE, record);
+    const run = await this.findRun(id, targetFor(saved.config.target,saved.config.profileId).workflow || this.env.GITHUB_WORKFLOW_FILE, record);
     if (!run) return { phase: record.status === 'rejected' ? 'failed' : 'uncertain', canRetryDispatch: record.status === 'rejected', message: record.status === 'rejected' ? '尚未觸發，可修正設定後重試' : '等待 GitHub 回報工作；不會自動重送' };
     if (!record.runId) {
       // Persist reconciliation so older jobs remain findable beyond the bounded run search.
@@ -107,7 +117,7 @@ export class Platform {
     const status: BuildStatus = { phase: phaseForRun(run, jobs.jobs), runId: run.id, runAttempt: run.run_attempt, runUrl: `https://github.com/${this.repository}/actions/runs/${run.id}` };
     if (run.status !== 'completed' || run.conclusion !== 'success') return status;
     try {
-      const tag = releaseIdentity(saved,run.id,run.run_attempt).releaseTag;
+      const tag = releaseIdentity(saved,run.id,run.run_attempt,run).releaseTag;
       const release = await this.github.call(this.path(`releases/tags/${tag}`));
       if (release.draft) return { ...status, phase: 'failed', message: 'Release 尚未完成發布' };
       const manifestAsset = release.assets.find((a: any) => a.name === 'provenance.json');

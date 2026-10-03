@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync, mkdirSync, cpSync } from 'node:fs';
+import { targetFor } from '../shared/catalog.ts';
+import { readFileSync, writeFileSync, mkdirSync, cpSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { validateConfig, type Config } from '../shared/domain.ts';
 
@@ -32,21 +33,26 @@ export function amendAm32(text: string, variant: string, enabled: boolean): stri
   return text.replace(pattern, (_, start, block, end) => start + setDefine(block, 'USE_SERIAL_TELEMETRY', enabled) + end);
 }
 export function applySettings(config: Config, source: string, definition: string): void {
-  const c = validateConfig(config);
+  const c = validateConfig(config), t = targetFor(c.target,c.profileId), template = 'templates/'+(t.templateKey || c.target);
   if (c.target === 'ardupilot') {
     const dir = join(source, 'libraries/AP_HAL_ChibiOS/hwdef/Morakot');
     mkdirSync(dir, { recursive: true });
     for (const name of ['hwdef.dat','hwdef-bl.dat','defaults.parm']) {
-      let text = c.files?.[name] ?? readFileSync(join('templates/ardupilot',name),'utf8');
+      let text = c.files?.[name] ?? readFileSync(join(template,name),'utf8');
       text = text.replace(/^APJ_BOARD_ID AP_HW_Morakot$/m, 'APJ_BOARD_ID 1210');
       writeFileSync(join(dir,name),text);
     }
+    if(c.schemaVersion===1){
     const original = readFileSync(join(dir, 'defaults.parm'),'utf8').replace(/^OSD_TYPE2\s+[^\n]*$/gm,'');
     writeFileSync(join(source, 'platform-defaults.parm'), original + `\nOSD_TYPE2 ${c.options.osd ? c.options.osdType2 : '0'}\n`);
     writeFileSync(join(source, 'platform-extra.dat'), `define OSD_ENABLED ${c.options.osd ? 1 : 0}\n${c.options.osd ? '' : 'define HAL_WITH_MSP_DISPLAYPORT 0\ndefine HAL_WITH_OSD_BITMAP 0\ndefine OSD_PARAM_ENABLED 0\n'}define AP_SCRIPTING_ENABLED ${c.options.scripting ? 1 : 0}\n`);
+    }else{
+      copyFileSync(join(dir,'defaults.parm'),join(source,'platform-defaults.parm'));
+      writeFileSync(join(source,'platform-extra.dat'),`define AP_SCRIPTING_ENABLED ${c.options.scripting ? 1 : 0}\n`);
+    }
   } else if (c.target === 'px4') {
     const dir = join(source,'boards/morakot/v6');
-    cpSync('templates/px4',dir,{recursive:true});
+    cpSync(template,dir,{recursive:true});
     for (const [name,text] of Object.entries(c.files ?? {})) writeFileSync(join(dir,name),text);
     const prototype = JSON.parse(readFileSync(join(dir,'firmware.prototype'),'utf8'));
     if (!c.files?.['firmware.prototype']) { prototype.description = 'Taiphoon Morakot v6 firmware (bootloader board ID 1105)'; prototype.summary = 'MORAKOT-V6'; }
@@ -54,13 +60,14 @@ export function applySettings(config: Config, source: string, definition: string
     const path = join(dir, 'default.px4board');
     let text = readFileSync(path, 'utf8');
     for (const [name,enabled] of [['CONFIG_MODULES_UXRCE_DDS_CLIENT',c.options.dds],['CONFIG_DRIVERS_OSD_ATXXXX',c.options.osd],['CONFIG_BOARD_LTO',c.options.lto]] as const) {
+      if(c.schemaVersion===2 && name==='CONFIG_DRIVERS_OSD_ATXXXX')continue;
       text = text.replace(new RegExp(`^(?:${name}=.*|# ${name} is not set)\\r?\\n?`,'gm'),'');
       text += `\n${enabled ? name+'=y' : '# '+name+' is not set'}\n`;
     }
     writeFileSync(path, text);
   } else if (c.target === 'betaflight') {
     mkdirSync(join(definition,'configs/MORAKOT'),{recursive:true});
-    cpSync('templates/betaflight',join(definition,'configs/MORAKOT'),{recursive:true});
+    cpSync(template,join(definition,'configs/MORAKOT'),{recursive:true});
     for (const [name,text] of Object.entries(c.files ?? {})) writeFileSync(join(definition,'configs/MORAKOT',name),text);
     const path = join(definition, 'configs/MORAKOT/config.h');
     writeFileSync(path,c.files?.['config.h'] ?? readFileSync(path,'utf8'));
@@ -73,7 +80,7 @@ export function applySettings(config: Config, source: string, definition: string
     let text = readFileSync(post,'utf8');
     const headers = ['src/main/target/common_pre.h','src/main/target/common_post.h'].map(p=>readFileSync(join(source,p),'utf8')).join('\n')+readFileSync(path,'utf8');
     const macros = [...new Set(headers.match(/\b(?:USE|ENABLE)_[A-Z0-9_]+\b/g) ?? [])];
-    for (const [key,prefixes] of Object.entries(groups)) if (!c.options[key]) for (const macro of macros.filter(m=>prefixes.some(p=>m===p||m.startsWith(p+'_')||m===p.replace('USE_','ENABLE_')||m.startsWith(p.replace('USE_','ENABLE_')+'_')))) text += `\n#undef ${macro}\n${macro.startsWith('ENABLE_') ? '#define '+macro+' 0\n' : ''}`;
+    for (const [key,prefixes] of Object.entries(groups)) if (!(c.schemaVersion===2 && key==='osd') && !c.options[key]) for (const macro of macros.filter(m=>prefixes.some(p=>m===p||m.startsWith(p+'_')||m===p.replace('USE_','ENABLE_')||m.startsWith(p.replace('USE_','ENABLE_')+'_')))) text += `\n#undef ${macro}\n${macro.startsWith('ENABLE_') ? '#define '+macro+' 0\n' : ''}`;
     // beeper.c supplies NONE itself when the feature is absent. A board pin
     // retained from config.h would conflict with that upstream fallback.
     if (!c.options.beeper) text += '\n#undef BEEPER_PIN\n';

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { configFor, canonicalConfig, releaseIdentity, type SavedRequest, type Provenance } from '../shared/domain.ts';
+import { configFor, canonicalConfig, releaseIdentity, type SavedRequest, type Provenance, type RunIdentity } from '../shared/domain.ts';
 import { targetFor } from '../shared/catalog.ts';
 import type { Environment } from '../server/github.ts';
 import { GitHubError } from '../server/github.ts';
@@ -15,8 +15,8 @@ export function savedFixture(): SavedRequest {
   const t = targetFor('ardupilot');
   return { requestId: ID, actor: 'Rex-Taiphoon', createdAt: '2026-10-03T00:00:00Z', config: configFor('ardupilot'), configSha: 'a'.repeat(40), sourceRepository: t.repository, sourceSha: t.sourceSha };
 }
-export function manifestFor(saved: SavedRequest, run = { id: 71, run_attempt: 1, head_sha: 'b'.repeat(40) }): Provenance {
-  return { ...releaseIdentity(saved,run.id,run.run_attempt), schemaVersion: 1, requestId: saved.requestId, configSha: saved.configSha, sourceRepository: saved.sourceRepository, sourceSha: saved.sourceSha, definitionSha: saved.definitionSha, definitionRepository: saved.definitionRepository,
+export function manifestFor(saved: SavedRequest, run:RunIdentity = { id: 71, run_attempt: 1, head_sha: 'b'.repeat(40) }): Provenance {
+  return { ...releaseIdentity(saved,run.id,run.run_attempt,run), schemaVersion: 1, requestId: saved.requestId, configSha: saved.configSha, sourceRepository: saved.sourceRepository, sourceSha: saved.sourceSha, definitionSha: saved.definitionSha, definitionRepository: saved.definitionRepository,
     configDigest: createHash('sha256').update(canonicalConfig(saved.config)).digest('hex'), workflowSha: run.head_sha, runId: run.id, runAttempt: run.run_attempt, target: saved.config.target, toolchain: 'Test compiler (MOCK ONLY)', assets: [{ name: 'arducopter.apj', sha256: 'f'.repeat(64), size: 100 }] };
 }
 export class FakeGitHub {

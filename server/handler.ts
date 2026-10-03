@@ -3,7 +3,7 @@ import { seal, unseal } from './crypto.ts';
 import { GitHub, GitHubError, type Environment, type Fetch } from './github.ts';
 import { Platform, PlatformError } from './platform.ts';
 import { ValidationError, object, requestId } from '../shared/domain.ts';
-import { targets } from '../shared/catalog.ts';
+import { targets, profiles, targetFor } from '../shared/catalog.ts';
 import { templateData } from './templates-data.ts';
 
 type Session = { actor: string; userToken: string; expires: number };
@@ -50,9 +50,12 @@ export function createHandler(env: Environment, transport: Fetch = fetch) {
       // Recheck the user's permission on every call; an App installation alone is not user authorization.
       const userRepository = await new GitHub(session.userToken, transport).call(`/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}`);
       if (!userRepository.permissions?.push) throw new PlatformError(403, '已無平台 repository 寫入權限');
-      if (url.pathname === '/session' && request.method === 'GET') return json({ actor: session.actor, repository: `${env.GITHUB_OWNER}/${env.GITHUB_REPO}`, targets });
+      if (url.pathname === '/session' && request.method === 'GET') return json({ actor: session.actor, repository: `${env.GITHUB_OWNER}/${env.GITHUB_REPO}`, targets, profiles });
       const template = url.pathname.match(/^\/templates\/(ardupilot|px4|betaflight|am32)$/);
-      if (request.method === 'GET' && template) return json({ files: templateData[template[1]] });
+      if (request.method === 'GET' && template) {
+        let specification;try{specification=targetFor(template[1],url.searchParams.get('profile') || undefined);}catch{throw new ValidationError('不支援的編譯版本設定');}
+        return json({files:templateData[specification.templateKey || specification.id],profileId:specification.profileId,templateRevision:specification.templateRevision});
+      }
       // GitHub App user tokens are bounded by both installation scope and user permissions.
       // No App private key or broader installation token is needed for user operations.
       const platform = new Platform(env, new GitHub(session.userToken, transport), session.actor);

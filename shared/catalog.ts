@@ -1,4 +1,4 @@
-import { boardFiles } from './board-files.ts';
+import { boardFiles, templateRevisions } from './board-files.ts';
 export type FirmwareId = 'ardupilot' | 'px4' | 'betaflight' | 'inav' | 'am32';
 export type Field = { key: string; label: string; kind: 'boolean' | 'choice'; choices?: { value: string; label: string }[]; default: string | boolean };
 export type Target = {
@@ -6,6 +6,8 @@ export type Target = {
   ref: string; sourceSha: string; definitionPath: string; definition?: { repository: string; sha: string; path: string };
   available: boolean; note: string; fields: Field[];
   version?: string; vehicleVersions?: Record<string,string>; editableFiles?: string[]; workflow?: string;
+  profileId?: string; templateKey?: string; templateRevision?: string; adapterRevision?: string;
+  image?: string; upstreamTag?: string; upstreamTagSha?: string;
 };
 export const targets: Target[] = [
   { id: 'ardupilot', name: 'ArduPilot', board: 'Morakot', description: 'Copter / Plane / Rover 4.6.3 · Sub 4.6.0-dev', repository: 'Rex-Taiphoon/ardupilot', ref: '92b0cd78', sourceSha: '92b0cd788ec29406f26c6f9c31d5ceedbd1cc538', definitionPath: 'libraries/AP_HAL_ChibiOS/hwdef/Morakot/hwdef.dat', version: '4.6.3', vehicleVersions: {copter:'4.6.3',plane:'4.6.3',rover:'4.6.3',sub:'4.6.0-dev'}, workflow: 'ardupilot.yml', editableFiles: ['hwdef.dat', 'hwdef-bl.dat', 'defaults.parm'], available: true, note: '使用附件固定來源與 Morakot 配置；此來源的 Sub 版本為 4.6.0-dev', fields: [
@@ -34,8 +36,24 @@ export const targets: Target[] = [
   ] },
 ];
 for (const target of targets) if (boardFiles[target.id]) target.editableFiles = boardFiles[target.id];
-export function targetFor(id: unknown): Target {
-  const target = targets.find(t => t.id === id);
+// Legacy entries remain unchanged: schema-1 snapshots and Release tags depend on them.
+export const profiles: Target[] = targets.filter(t=>t.available).map(t=>({
+  ...t, profileId: `${t.id}-${t.version || 'dev-'+t.sourceSha.slice(0,12)}-morakot-r1`,
+  templateKey: t.id, templateRevision: templateRevisions[t.id], adapterRevision: 'morakot-v2-r1',
+  fields: t.fields.filter(f=>!['osd','osdType2'].includes(f.key)),
+  ...(t.id==='ardupilot'?{image:'ardupilot/ardupilot-dev-chibios@sha256:8bb0f850fb3fe1c170cb12dd577ab64f3708be8a828f9eafd28d73559766e81f'}:{}),
+  ...(t.id==='px4'?{image:'ghcr.io/px4/px4-dev@sha256:5e7ad18c75c3a5a655d5adfde4ab1eb216dd4bee7710941b6cd122f3969a7fed',upstreamTag:'v1.18.0-beta1',upstreamTagSha:'d90ac5b79200c44895c03ee7c284b20b80ecf75d'}:{}),
+}));
+const px4 = profiles.find(t=>t.id==='px4')!;
+profiles.push({...px4, profileId:'px4-1.17.0-morakot-r1', repository:'PX4/PX4-Autopilot',
+  sourceSha:'d6f12ad1c4f70ad3230afd7d86e971421e02fef4', ref:'v1.17.0', version:'1.17.0',
+  description:'1.17.0 · Morakot', templateKey:'px4-1.17', templateRevision:templateRevisions['px4-1.17'],
+  editableFiles:boardFiles['px4-1.17'], upstreamTag:'v1.17.0', upstreamTagSha:'a5eb12d2ab591251faa009f76b2685b8cc64405d',
+  note:'官方 PX4 1.17.0 固定來源，搭配獨立 Morakot 配置；雲端編譯驗證不等同硬體驗收'});
+export function profilesFor(id: FirmwareId): Target[] { return profiles.filter(t=>t.id===id); }
+export function defaultProfileId(id: FirmwareId): string | undefined { return profilesFor(id)[0]?.profileId; }
+export function targetFor(id: unknown, profileId?: string): Target {
+  const target = profileId ? profiles.find(t=>t.id===id && t.profileId===profileId) : targets.find(t => t.id === id);
   if (!target) throw new Error('不支援的韌體目標');
   return target;
 }
