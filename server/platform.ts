@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { canonicalConfig, requestId, sha, validateConfig, phaseForRun, verifyProvenance, ValidationError, type SavedRequest, type Snapshot, type BuildStatus } from '../shared/domain.ts';
+import { canonicalConfig, requestId, sha, validateConfig, phaseForRun, verifyProvenance, releaseIdentity, ValidationError, type SavedRequest, type Snapshot, type BuildStatus } from '../shared/domain.ts';
 import { targetFor } from '../shared/catalog.ts';
 import { GitHub, GitHubError, type Environment } from './github.ts';
 
@@ -13,7 +13,7 @@ export class Platform {
   private async file(path: string): Promise<{ value: any; blob: string } | undefined> {
     try {
       const f = await this.github.call(this.path(`contents/${path}?ref=${encodeURIComponent(this.env.GITHUB_CONFIG_BRANCH)}`));
-      if (f.encoding !== 'base64' || f.size > 32768) throw new PlatformError(422, '無效的設定記錄');
+      if (f.encoding !== 'base64' || f.size > 262144) throw new PlatformError(422, '無效的設定記錄');
       return { value: JSON.parse(Buffer.from(f.content, 'base64').toString()), blob: f.sha };
     } catch (e) { if (e instanceof GitHubError && e.status === 404) return undefined; throw e; }
   }
@@ -55,14 +55,14 @@ export class Platform {
       throw e;
     }
   }
-  private async findRun(id: string, record?: DispatchRecord) {
+  private async findRun(id: string, workflow: string, record?: DispatchRecord) {
     if (record?.runId) {
       const run = await this.github.call(this.path(`actions/runs/${record.runId}`));
-      if (run.display_title !== `Firmware ${id}` || run.path !== `.github/workflows/${this.env.GITHUB_WORKFLOW_FILE}`) throw new ValidationError('Actions 工作與請求不一致');
+      if (run.display_title !== `Firmware ${id}` || run.path !== `.github/workflows/${workflow}`) throw new ValidationError('Actions 工作與請求不一致');
       return run;
     }
     for (let page = 1; page <= 5; page++) {
-      const result = await this.github.call(this.path(`actions/workflows/${encodeURIComponent(this.env.GITHUB_WORKFLOW_FILE)}/runs?event=workflow_dispatch&per_page=100&page=${page}`));
+      const result = await this.github.call(this.path(`actions/workflows/${encodeURIComponent(workflow)}/runs?event=workflow_dispatch&per_page=100&page=${page}`));
       const run = result.workflow_runs.find((r: any) => r.display_title === `Firmware ${id}`);
       if (run) return run;
       if (result.workflow_runs.length < 100) break;
@@ -70,6 +70,7 @@ export class Platform {
   }
   async dispatch(id: string): Promise<BuildStatus> {
     const saved = await this.saved(id);
+    const workflow = targetFor(saved.config.target).workflow || this.env.GITHUB_WORKFLOW_FILE;
     const location = `dispatches/${id}.json`, prior = await this.file(location);
     if (prior && prior.value.configSha !== saved.configSha) throw new PlatformError(409, '已保存的設定版本被變更，請建立新工作');
     if (prior && prior.value.status !== 'rejected') return this.status(id);
@@ -78,7 +79,7 @@ export class Platform {
     try { lock = await this.write(location, record, prior?.blob); }
     catch (e) { if (e instanceof GitHubError && [409, 422].includes(e.status)) return this.status(id); throw e; }
     try {
-      const result = await this.github.call(this.path(`actions/workflows/${encodeURIComponent(this.env.GITHUB_WORKFLOW_FILE)}/dispatches`), 'POST', {
+      const result = await this.github.call(this.path(`actions/workflows/${encodeURIComponent(workflow)}/dispatches`), 'POST', {
         ref: this.env.GITHUB_WORKFLOW_REF, inputs: { request_id: id, config_sha: saved.configSha, publish_release: 'true' },
       });
       const runId = result?.workflow_run_id;
@@ -96,7 +97,7 @@ export class Platform {
     if (!file) return { phase: 'saved' };
     const record = file.value as DispatchRecord;
     if (record.actor !== this.actor || record.configSha !== saved.configSha) throw new PlatformError(409, '工作設定版本不一致');
-    const run = await this.findRun(id, record);
+    const run = await this.findRun(id, targetFor(saved.config.target).workflow || this.env.GITHUB_WORKFLOW_FILE, record);
     if (!run) return { phase: record.status === 'rejected' ? 'failed' : 'uncertain', canRetryDispatch: record.status === 'rejected', message: record.status === 'rejected' ? '尚未觸發，可修正設定後重試' : '等待 GitHub 回報工作；不會自動重送' };
     if (!record.runId) {
       // Persist reconciliation so older jobs remain findable beyond the bounded run search.
@@ -106,12 +107,12 @@ export class Platform {
     const status: BuildStatus = { phase: phaseForRun(run, jobs.jobs), runId: run.id, runAttempt: run.run_attempt, runUrl: `https://github.com/${this.repository}/actions/runs/${run.id}` };
     if (run.status !== 'completed' || run.conclusion !== 'success') return status;
     try {
-      const tag = `build-${run.id}-${run.run_attempt}`;
+      const tag = releaseIdentity(saved,run.id,run.run_attempt).releaseTag;
       const release = await this.github.call(this.path(`releases/tags/${tag}`));
       if (release.draft) return { ...status, phase: 'failed', message: 'Release 尚未完成發布' };
       const manifestAsset = release.assets.find((a: any) => a.name === 'provenance.json');
       const configAsset = release.assets.find((a: any) => a.name === 'config.json');
-      if (!manifestAsset || manifestAsset.size > 65536 || !configAsset || configAsset.size > 32768) throw new ValidationError('Release 缺少版本資訊或設定快照');
+      if (!manifestAsset || manifestAsset.size > 65536 || !configAsset || configAsset.size > 131072) throw new ValidationError('Release 缺少版本資訊或設定快照');
       const digest = createHash('sha256').update(canonicalConfig(saved.config)).digest('hex');
       const manifest = verifyProvenance(await this.github.manifest(this.repository, manifestAsset.id), saved, run, digest);
       if (canonicalConfig(await this.github.manifest(this.repository, configAsset.id)) !== canonicalConfig(saved.config)) throw new ValidationError('Release 設定快照內容不一致');

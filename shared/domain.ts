@@ -1,8 +1,10 @@
 import { targets, targetFor, type FirmwareId } from './catalog.ts';
+import { validateFiles } from './file-policy.ts';
 export type Config = {
   schemaVersion: 1;
   target: FirmwareId;
   options: Record<string, string | boolean>;
+  files?: Record<string, string>;
 };
 export function configFor(id: FirmwareId): Config { return { schemaVersion: 1, target: id, options: Object.fromEntries(targetFor(id).fields.map(f => [f.key, f.default])) }; }
 export const defaultConfig = configFor('ardupilot');
@@ -18,6 +20,7 @@ export type Provenance = {
   sourceRepository: string; sourceSha: string; workflowSha: string;
   runId: number; runAttempt: number; target: FirmwareId; toolchain: string; assets: Asset[];
   definitionRepository?: string; definitionSha?: string;
+  firmwareVersion?: string; buildDate?: string; releaseTag?: string; variant?: string;
 };
 export type BuildStatus = {
   phase: Phase; message?: string; runId?: number; runAttempt?: number;
@@ -33,7 +36,7 @@ function keys(value: Record<string, unknown>, expected: string[]) {
   if (Object.keys(value).sort().join(',') !== [...expected].sort().join(',')) throw new ValidationError('設定包含缺失或未允許的欄位');
 }
 export function validateConfig(value: unknown): Config {
-  const c = object(value); keys(c, ['schemaVersion', 'target', 'options']);
+  const c = object(value); keys(c, ['schemaVersion', 'target', 'options', ...(c.files !== undefined ? ['files'] : [])]);
   const target = targets.find(t => t.id === c.target);
   if (c.schemaVersion !== 1 || !target) throw new ValidationError('不支援的設定版本或編譯目標');
   const o = object(c.options); keys(o, target.fields.map(f => f.key));
@@ -43,7 +46,9 @@ export function validateConfig(value: unknown): Config {
     if (f.kind === 'boolean' ? typeof v !== 'boolean' : !f.choices?.some(choice => choice.value === v)) throw new ValidationError(`${f.label}不在允許範圍`);
     options[f.key] = v as string | boolean;
   }
-  return { schemaVersion: 1, target: target.id, options };
+  let files: Record<string, string> | undefined;
+  try { if (c.files !== undefined) files = validateFiles(target.id, c.files); } catch (e) { throw new ValidationError((e as Error).message); }
+  return { schemaVersion: 1, target: target.id, options, ...(files ? { files } : {}) };
 }
 export function requestId(value: unknown): string {
   if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) throw new ValidationError('無效的 request ID');
@@ -54,8 +59,17 @@ export function sha(value: unknown): string {
   return value;
 }
 export function canonicalConfig(value: unknown): string { return JSON.stringify(validateConfig(value)); }
+export function releaseIdentity(saved: Snapshot, runId: number, attempt: number) {
+  const t = targetFor(saved.config.target), date = saved.createdAt.slice(0,10).replaceAll('-','');
+  const version = (t.version || t.sourceSha.slice(0,12)).replace(/[^A-Za-z0-9._-]/g,'-');
+  const variant = String(saved.config.options.vehicle || saved.config.options.variant || 'Morakot');
+  return { firmwareVersion: t.version || t.sourceSha.slice(0,12), buildDate: saved.createdAt.slice(0,10), variant,
+    releaseTag: `${t.id}-${variant}-${version}-${date}-${runId}-${attempt}` };
+}
 export function verifyProvenance(p: unknown, saved: SavedRequest, run: { id: number; run_attempt: number; head_sha: string }, digest: string): Provenance {
   const m = object(p);
+  const identity = releaseIdentity(saved,run.id,run.run_attempt);
+  if (m.releaseTag !== undefined && Object.entries(identity).some(([key,v]) => m[key] !== v)) throw new ValidationError('韌體版本、日期或 Release 標籤不一致');
   if (m.schemaVersion !== 1 || m.requestId !== saved.requestId || m.configSha !== saved.configSha ||
       m.sourceSha !== saved.sourceSha || m.sourceRepository !== saved.sourceRepository || m.target !== saved.config.target ||
       m.configDigest !== digest || m.runId !== run.id || m.runAttempt !== run.run_attempt || m.workflowSha !== run.head_sha ||

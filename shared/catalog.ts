@@ -4,19 +4,26 @@ export type Target = {
   id: FirmwareId; name: string; board: string; description: string; repository: string;
   ref: string; sourceSha: string; definitionPath: string; definition?: { repository: string; sha: string; path: string };
   available: boolean; note: string; fields: Field[];
+  version?: string; editableFiles?: string[]; workflow?: string;
 };
 export const targets: Target[] = [
-  { id: 'ardupilot', name: 'ArduPilot', board: 'Morakot', description: 'Copter · Plane · Rover', repository: 'Rex-Taiphoon/ardupilot', ref: 'master', sourceSha: 'abc8df0d405dc2b39663e0c800bc729a0287bf53', definitionPath: 'libraries/AP_HAL_ChibiOS/hwdef/Morakot/hwdef.dat', available: true, note: 'Copter 雲端編譯已驗證；Plane / Rover 待驗收', fields: [
-    { key: 'vehicle', label: '載具韌體', kind: 'choice', default: 'copter', choices: [{ value: 'copter', label: 'Copter 多旋翼' }, { value: 'plane', label: 'Plane 固定翼' }, { value: 'rover', label: 'Rover 地面載具' }] },
+  { id: 'ardupilot', name: 'ArduPilot', board: 'Morakot', description: '4.6.3 · Copter / Plane / Rover / Sub', repository: 'Rex-Taiphoon/ardupilot', ref: '92b0cd78', sourceSha: '92b0cd788ec29406f26c6f9c31d5ceedbd1cc538', definitionPath: 'libraries/AP_HAL_ChibiOS/hwdef/Morakot/hwdef.dat', version: '4.6.3', workflow: 'ardupilot.yml', editableFiles: ['hwdef.dat', 'hwdef-bl.dat', 'defaults.parm'], available: true, note: '使用附件 4.6.3 原始碼版本與 Morakot 配置', fields: [
+    { key: 'vehicle', label: '載具韌體', kind: 'choice', default: 'copter', choices: [{ value: 'copter', label: 'Copter 多旋翼' }, { value: 'plane', label: 'Plane 固定翼' }, { value: 'rover', label: 'Rover 地面載具' }, { value: 'sub', label: 'Sub 水下載具' }] },
+    { key: 'osd', label: '編譯 OSD（停用時移除 OSD 程式）', kind: 'boolean', default: true },
+    { key: 'scripting', label: '包含 Lua 腳本支援', kind: 'boolean', default: true },
     { key: 'osdType2', label: '第二組 OSD 預設值', kind: 'choice', default: '5', choices: [{ value: '5', label: 'MSP DisplayPort（原始定義）' }, { value: '0', label: '停用' }] },
   ] },
-  { id: 'px4', name: 'PX4', board: 'taiphoon_morakot_default', description: 'NuttX · MORAKOT H743', repository: 'Rex-Taiphoon/PX4-Autopilot', ref: 'dev-morakot', sourceSha: '2883a8fb033410b1ca16240be288e1544b193bb0', definitionPath: 'boards/taiphoon/morakot/default.px4board', available: true, note: '已核對 board；雲端編譯待驗收', fields: [
+  { id: 'px4', name: 'PX4', board: 'morakot_v6_default', description: '1.18.0-beta1 · MORAKOT v6', repository: 'Rex-Taiphoon/PX4-Autopilot', ref: '186ad6d691', sourceSha: '186ad6d6914456bdb39f196c3069e9bef995bc3a', definitionPath: 'boards/morakot/v6/default.px4board', version: '1.18.0-beta1-6-g186ad6d691', workflow: 'px4.yml', editableFiles: ['default.px4board', 'init/rc.board_defaults', 'init/rc.board_sensors'], available: true, note: '使用附件 Morakot v6；保留原 bootloader board ID 1105', fields: [
     { key: 'dds', label: '包含 uXRCE-DDS 模組', kind: 'boolean', default: true },
-    { key: 'osd', label: '包含 MSP OSD 驅動', kind: 'boolean', default: true },
+    { key: 'osd', label: '包含 ATXXXX OSD 驅動', kind: 'boolean', default: false },
+    { key: 'buildType', label: '編譯模式', kind: 'choice', default: 'Release', choices: [{ value: 'Release', label: 'Release 最佳化' }, { value: 'Debug', label: 'Debug 除錯' }] },
   ] },
-  { id: 'betaflight', name: 'Betaflight', board: 'MORAKOT / STM32H743', description: 'FPV · 獨立硬體設定', repository: 'Rex-Taiphoon/betaflight', ref: 'master', sourceSha: '0bf1f45b024222a0517bde53430a4edb36ed4ba1', definitionPath: 'configs/MORAKOT/config.h', definition: { repository: 'Rex-Taiphoon/config', sha: 'f1a20631ba16280ea9572223b99a37eceeb01751', path: 'configs/MORAKOT/config.h' }, available: true, note: '已核對外部 config；雲端編譯待驗收', fields: [
+  { id: 'betaflight', name: 'Betaflight', board: 'MORAKOT / STM32H743', description: '2026.12.0-alpha · MORAKOT', repository: 'betaflight/betaflight', ref: '2026-08-23', sourceSha: '1b53ace8356cc43f3c8359ed2357255ba789ca73', definitionPath: 'configs/MORAKOT/config.h', version: '2026.12.0-alpha', workflow: 'betaflight.yml', editableFiles: ['config.h'], available: true, note: '附件硬體 config；原 ZIP source SHA 未確認，使用相同版本的官方 2026-08-23 固定來源', fields: [
     { key: 'gps', label: '包含 GPS 功能', kind: 'boolean', default: true },
     { key: 'beeper', label: '包含蜂鳴器功能', kind: 'boolean', default: true },
+    { key: 'osd', label: '包含 OSD 功能', kind: 'boolean', default: true },
+    { key: 'blackbox', label: '包含 Blackbox', kind: 'boolean', default: true },
+    { key: 'telemetry', label: '包含遙測', kind: 'boolean', default: true },
   ] },
   { id: 'inav', name: 'INAV', board: 'MORAKOT · 待提供', description: '導航飛控 · 預留整合', repository: '', ref: '', sourceSha: '', definitionPath: '', available: false, note: '等待 repository 與 MORAKOT target 定義', fields: [] },
   { id: 'am32', name: 'AM32', board: 'Morakot 4-in-1 ESC', description: '60A · G071 / L431 CAN', repository: 'Rex-Taiphoon/AM32', ref: 'Morakot_4in1_ESC-dev', sourceSha: 'eec483e880bc9ac2429dafc71368f044dc018892', definitionPath: 'Inc/targets.h', available: true, note: '已核對兩種 ESC 定義；雲端編譯待驗收', fields: [

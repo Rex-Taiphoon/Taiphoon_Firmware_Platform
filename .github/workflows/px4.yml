@@ -1,0 +1,118 @@
+name: px4 Morakot build
+run-name: Firmware ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: Saved request UUID
+        required: true
+        type: string
+      config_sha:
+        description: Immutable configuration commit SHA
+        required: true
+        type: string
+      publish_release:
+        description: Publish verified outputs to a Release (leave disabled for compilation validation)
+        required: false
+        type: boolean
+        default: false
+permissions: {}
+concurrency:
+  group: firmware-${{ inputs.request_id }}
+  cancel-in-progress: false
+env:
+  EXPECTED_TARGET: px4
+  REQUEST_ID: ${{ inputs.request_id }}
+  CONFIG_SHA: ${{ inputs.config_sha }}
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      source_repository: ${{ steps.prepare.outputs.source_repository }}
+      source_sha: ${{ steps.prepare.outputs.source_sha }}
+      definition_repository: ${{ steps.prepare.outputs.definition_repository }}
+      definition_sha: ${{ steps.prepare.outputs.definition_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+      - id: prepare
+        run: node scripts/pipeline.ts prepare
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: validated-request-${{ github.run_id }}-${{ github.run_attempt }}
+          path: work/snapshot.json
+          retention-days: 1
+          if-no-files-found: error
+  build:
+    name: build
+    needs: validate
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: validated-request-${{ github.run_id }}-${{ github.run_attempt }}
+          path: work
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ needs.validate.outputs.source_repository }}
+          ref: ${{ needs.validate.outputs.source_sha }}
+          path: work/source
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: needs.validate.outputs.definition_repository != needs.validate.outputs.source_repository
+        with:
+          repository: ${{ needs.validate.outputs.definition_repository }}
+          ref: ${{ needs.validate.outputs.definition_sha }}
+          path: work/definition
+          persist-credentials: false
+      - run: node scripts/pipeline.ts build
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: firmware-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output/
+          retention-days: 1
+          if-no-files-found: error
+  publish:
+    name: publish
+    if: inputs.publish_release
+    needs: [validate, build]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: firmware-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output
+      - run: node scripts/pipeline.ts publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PUBLISH_RELEASE: ${{ inputs.publish_release }}

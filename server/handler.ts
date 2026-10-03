@@ -4,6 +4,7 @@ import { GitHub, GitHubError, installationClient, type Environment, type Fetch }
 import { Platform, PlatformError } from './platform.ts';
 import { ValidationError, object, requestId } from '../shared/domain.ts';
 import { targets } from '../shared/catalog.ts';
+import { templateData } from './templates-data.ts';
 
 type Session = { actor: string; userToken: string; expires: number };
 type State = { nonce: string; expires: number };
@@ -50,13 +51,17 @@ export function createHandler(env: Environment, transport: Fetch = fetch) {
       const userRepository = await new GitHub(session.userToken, transport).call(`/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}`);
       if (!userRepository.permissions?.push) throw new PlatformError(403, '已無平台 repository 寫入權限');
       if (url.pathname === '/session' && request.method === 'GET') return json({ actor: session.actor, repository: `${env.GITHUB_OWNER}/${env.GITHUB_REPO}`, targets });
-      const platform = new Platform(env, await installationClient(env, transport), session.actor);
+      const template = url.pathname.match(/^\/templates\/(ardupilot|px4|betaflight)$/);
+      if (request.method === 'GET' && template) return json({ files: templateData[template[1]] });
+      // GitHub App user tokens are bounded by both installation scope and user permissions.
+      // No App private key or broader installation token is needed for user operations.
+      const platform = new Platform(env, new GitHub(session.userToken, transport), session.actor);
       if (url.pathname === '/requests' && request.method === 'POST') {
         if (!request.headers.get('content-type')?.startsWith('application/json')) throw new PlatformError(415, '必須使用 JSON');
-        if (Number(request.headers.get('content-length')) > 8192) throw new PlatformError(413, '設定太大');
+        if (Number(request.headers.get('content-length')) > 131072) throw new PlatformError(413, '設定太大');
         const reader = request.body?.getReader(); if (!reader) throw new PlatformError(400, '缺少設定');
         let size = 0; const chunks: Uint8Array[] = [];
-        for (;;) { const { value, done } = await reader.read(); if (done) break; size += value.byteLength; if (size > 8192) { await reader.cancel(); throw new PlatformError(413, '設定太大'); } chunks.push(value); }
+        for (;;) { const { value, done } = await reader.read(); if (done) break; size += value.byteLength; if (size > 131072) { await reader.cancel(); throw new PlatformError(413, '設定太大'); } chunks.push(value); }
         let body: Record<string, unknown>; try { body = object(JSON.parse(Buffer.concat(chunks).toString())); } catch { throw new PlatformError(400, '無效的 JSON'); }
         if (Object.keys(body).sort().join(',') !== 'config,requestId') throw new PlatformError(400, '不允許的提交欄位');
         return json(await platform.save(requestId(body.requestId), body.config), 201);

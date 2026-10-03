@@ -23,7 +23,7 @@ export class FakeGitHub {
   files = new Map<string, { value: any; blob: string; commit: string }>(); counter = 1;
   dispatchCount = 0; timeoutAfterAccept = false; rejectDispatch = false;
   dispatchInputs: any;
-  run: any = { id: 71, run_attempt: 1, head_sha: 'b'.repeat(40), display_title: `Firmware ${ID}`, path: '.github/workflows/firmware.yml', status: 'queued', conclusion: null };
+  run: any = { id: 71, run_attempt: 1, head_sha: 'b'.repeat(40), display_title: `Firmware ${ID}`, path: '.github/workflows/ardupilot.yml', status: 'queued', conclusion: null };
   runs: any[] = []; jobs: any[] = []; release: any; provenance: any; publishedConfig: any;
   async call<T = any>(path: string, method = 'GET', body?: any): Promise<T> {
     const url = new URL(path, 'https://api.github.com'); let result: any;

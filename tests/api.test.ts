@@ -8,7 +8,7 @@ import { env, ID, FakeGitHub } from './fixtures.ts';
 
 const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const testEnv = { ...env, GITHUB_APP_PRIVATE_KEY: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() };
-test('HTTP handler 經使用者授權與 installation token 完成保存、觸發、狀態、版本核對下載', async () => {
+test('HTTP handler 經使用者授權的 App user token 完成保存、觸發、狀態、版本核對下載', async () => {
   const gh = new FakeGitHub(); let minted = 0;
   const handler = createHandler(testEnv, async (input, init) => {
     const url = new URL(String(input)); const method = init?.method || 'GET'; const body = init?.body ? JSON.parse(String(init.body)) : undefined;
@@ -30,7 +30,7 @@ test('HTTP handler 經使用者授權與 installation token 完成保存、觸�
   const status = await handler(new Request(`${env.API_ORIGIN}/requests/${ID}/status`, { headers }));
   const result = await status.json(); assert.equal(result.phase, 'success'); assert.equal(result.provenance.configSha, saved.configSha);
   assert.equal(status.headers.get('access-control-allow-origin'), env.PAGES_ORIGIN);
-  assert.ok(!JSON.stringify(result).includes('FAKE_')); assert.equal(minted, 3);
+  assert.ok(!JSON.stringify(result).includes('FAKE_')); assert.equal(minted, 0);
 });
 test('OAuth 完成後只傳加密平台 session，GitHub token 不會送入 HTML', async () => {
   const handler = createHandler(env, async input => {

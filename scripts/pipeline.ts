@@ -3,7 +3,7 @@ import { appendFileSync, readFileSync, writeFileSync, mkdirSync, readdirSync, co
 import { resolve, join, basename } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { GitHub, GitHubError } from '../server/github.ts';
-import { validateConfig, canonicalConfig, requestId, sha, verifyProvenance, type Snapshot, type SavedRequest, type Provenance } from '../shared/domain.ts';
+import { validateConfig, canonicalConfig, requestId, sha, verifyProvenance, releaseIdentity, type Snapshot, type SavedRequest, type Provenance } from '../shared/domain.ts';
 import { targetFor } from '../shared/catalog.ts';
 import { plan, applySettings } from './adapter.ts';
 import { gitSafetyEnvironment } from './container.ts';
@@ -18,9 +18,10 @@ const github = new GitHub(process.env.GITHUB_TOKEN || '');
 function digest(path: string) { return createHash('sha256').update(readFileSync(path)).digest('hex'); }
 async function snapshot(): Promise<SavedRequest> {
   const file = await github.call(`/repos/${repository}/contents/requests/${id}.json?ref=${configSha}`);
-  if (file.encoding !== 'base64' || file.size > 32768) throw new Error('無效的設定快照');
+  if (file.encoding !== 'base64' || file.size > 262144) throw new Error('無效的設定快照');
   const s = JSON.parse(Buffer.from(file.content, 'base64').toString()) as Snapshot;
   const c = validateConfig(s.config), target = targetFor(c.target);
+  if (process.env.EXPECTED_TARGET && c.target !== process.env.EXPECTED_TARGET) throw new Error('此工作流程不接受其他平台的設定');
   if (!target.available || s.requestId !== id || s.sourceRepository !== target.repository || s.sourceSha !== target.sourceSha || s.definitionRepository !== target.definition?.repository || s.definitionSha !== target.definition?.sha) throw new Error('設定與受控來源不一致');
   return { ...s, config: c, configSha };
 }
@@ -43,8 +44,8 @@ if (mode === 'prepare') {
   verifyCheckout(source, s.sourceSha); if (s.definitionSha) verifyCheckout(definition, s.definitionSha);
   applySettings(c, source, definition);
   let toolchain = '';
-  if (c.target === 'ardupilot') {
-    const image = 'ardupilot/ardupilot-dev-chibios:v0.2.0';
+  if (c.target === 'ardupilot' || c.target === 'px4') {
+    const image = c.target === 'ardupilot' ? 'ardupilot/ardupilot-dev-chibios:v0.2.0' : 'ghcr.io/px4/px4-dev:v1.17.0-rc2';
     run('docker', ['pull', image], process.cwd());
     const imageDigest = run('docker', ['inspect', '--format={{index .RepoDigests 0}}', image], process.cwd(), true).trim();
     const imageEnvironment: string[] = JSON.parse(run('docker', ['inspect', '--format={{json .Config.Env}}', image], process.cwd(), true));
@@ -53,9 +54,13 @@ if (mode === 'prepare') {
     const submodules = run('git', ['submodule', 'foreach', '--quiet', '--recursive', 'pwd'], source, true).trim().split(/\r?\n/).filter(Boolean);
     const gitEnvironment = gitSafetyEnvironment(source, submodules).flatMap(value => ['-e', value]);
     // Preserve the official image's user, HOME and Python environment.
-    const dockerArgs = ['run', '--rm', '-e', `PATH=/opt/gcc-arm-none-eabi-10/bin:${imagePath}`, ...gitEnvironment, '-v', `${source}:/source`, '-w', '/source', image];
+    const dockerArgs = ['run', '--rm', '-e', `PATH=${c.target === 'ardupilot' ? '/opt/gcc-arm-none-eabi-10/bin:' : ''}${imagePath}`, ...gitEnvironment, '-v', `${source}:/source`, '-w', '/source', image];
     toolchain = run('docker', [...dockerArgs, 'arm-none-eabi-gcc', '--version'], process.cwd(), true).split('\n')[0] + `; ${imageDigest}`;
-    for (const command of plan(c, '/definition')) run('docker', [...dockerArgs, command.executable, ...command.args], process.cwd());
+    if (c.target === 'ardupilot') {
+      for (const args of [['configure','--board','Morakot','--bootloader'],['bootloader']]) run('docker',[...dockerArgs,'./waf',...args],process.cwd());
+      copyFileSync(join(source,'build/Morakot/bin/AP_Bootloader.bin'),join(source,'Tools/bootloaders/Morakot_bl.bin'));
+    }
+    for (const command of c.target === 'px4' ? plan(c,'/definition').slice(1) : plan(c, '/definition')) run('docker', [...dockerArgs, command.executable, ...command.args], process.cwd());
   } else {
     for (const command of plan(c, definition)) run(command.executable, command.args, source);
     const compilers = readdirSync(source, { recursive: true }).map(String).filter(p => basename(p) === 'arm-none-eabi-gcc');
@@ -63,14 +68,16 @@ if (mode === 'prepare') {
     toolchain = run(compiler, ['--version'], source, true).split('\n')[0];
   }
   mkdirSync('output', { recursive: true });
-  const directory = c.target === 'ardupilot' ? join(source, 'build/Morakot/bin') : c.target === 'px4' ? join(source, 'build/taiphoon_morakot_default') : c.target === 'betaflight' ? join(source, 'obj') : join(source, 'obj');
-  const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? /\.(apj|bin)$/.test(name) : c.target === 'px4' ? name === 'taiphoon_morakot_default.px4' : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
+  const directory = c.target === 'ardupilot' ? join(source, 'build/Morakot/bin') : c.target === 'px4' ? join(source, 'build/morakot_v6_default') : join(source, 'obj');
+  const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? name !== 'AP_Bootloader.bin' && /\.(apj|bin)$/.test(name) : c.target === 'px4' ? name === 'morakot_v6_default.px4' : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
   if (!files.length) throw new Error('編譯成功但找不到目標產物');
-  for (const name of files) { if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,100}$/.test(name) || !lstatSync(join(directory, name)).isFile()) throw new Error('無效產物'); copyFileSync(join(directory, name), join('output', name)); }
-  const assets = files.map(name => ({ name, size: statSync(join('output', name)).size, sha256: digest(join('output', name)) }));
+  const identity = releaseIdentity(s,Number(process.env.GITHUB_RUN_ID),Number(process.env.GITHUB_RUN_ATTEMPT));
+  const names = files.map(name => ({ original:name, renamed:`${identity.releaseTag}${name.slice(name.lastIndexOf('.'))}` }));
+  for (const {original,renamed} of names) { if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,100}$/.test(renamed) || !lstatSync(join(directory, original)).isFile()) throw new Error('無效產物'); copyFileSync(join(directory, original), join('output', renamed)); }
+  const assets = names.map(({renamed:name}) => ({ name, size: statSync(join('output', name)).size, sha256: digest(join('output', name)) }));
   const manifest: Provenance = { schemaVersion: 1, requestId: id, configSha, sourceRepository: s.sourceRepository, sourceSha: s.sourceSha,
     ...(s.definitionSha ? { definitionRepository: s.definitionRepository, definitionSha: s.definitionSha } : {}),
-    configDigest: createHash('sha256').update(canonicalConfig(c)).digest('hex'), workflowSha: sha(process.env.GITHUB_SHA), runId: Number(process.env.GITHUB_RUN_ID), runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT), target: c.target, toolchain, assets };
+    configDigest: createHash('sha256').update(canonicalConfig(c)).digest('hex'), workflowSha: sha(process.env.GITHUB_SHA), runId: Number(process.env.GITHUB_RUN_ID), runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT), target: c.target, toolchain, assets, ...identity };
   writeFileSync('output/config.json', canonicalConfig(c) + '\n'); writeFileSync('output/provenance.json', JSON.stringify(manifest, null, 2) + '\n');
 } else if (mode === 'publish') {
   const s = await snapshot();
@@ -83,10 +90,10 @@ if (mode === 'prepare') {
   if (readdirSync('output').sort().join(',') !== expected.join(',')) throw new Error('產物包含未允許的檔案');
   for (const name of expected) if (!lstatSync(join('output', name)).isFile() || statSync(join('output', name)).size > 104857600) throw new Error('無效產物或大小超出限制');
   for (const asset of manifest.assets) if (digest(join('output', asset.name)) !== asset.sha256 || statSync(join('output', asset.name)).size !== asset.size) throw new Error('產物雜湊或大小不符');
-  const tag = `build-${actualRun.id}-${actualRun.run_attempt}`;
+  const tag = releaseIdentity(s,actualRun.id,actualRun.run_attempt).releaseTag;
   let existing: any; try { existing = await github.call(`/repos/${repository}/releases/tags/${tag}`); } catch (e) { if (!(e instanceof GitHubError && e.status === 404)) throw e; }
   if (existing) throw new Error('此 Release 已存在，不覆寫既有結果');
-  const release = await github.call(`/repos/${repository}/releases`, 'POST', { tag_name: tag, target_commitish: actualRun.head_sha, name: `${targetFor(s.config.target).name} · ${id}`, draft: true, make_latest: 'false', body: `設定版本：${configSha}\n原始碼版本：${s.sourceRepository}@${s.sourceSha}\nActions：https://github.com/${repository}/actions/runs/${actualRun.id}\n完整版本與 SHA-256：provenance.json` });
+  const release = await github.call(`/repos/${repository}/releases`, 'POST', { tag_name: tag, target_commitish: actualRun.head_sha, name: `${targetFor(s.config.target).name} ${manifest.firmwareVersion} · ${manifest.variant} · ${manifest.buildDate}`, draft: true, make_latest: 'false', body: `設定版本：${configSha}\n原始碼版本：${s.sourceRepository}@${s.sourceSha}\nActions：https://github.com/${repository}/actions/runs/${actualRun.id}\n${targetFor(s.config.target).note}\n完整版本與 SHA-256：provenance.json` });
   for (const name of expected) {
     const response = await fetch(`https://uploads.github.com/repos/${repository}/releases/${release.id}/assets?name=${encodeURIComponent(name)}`, { method: 'POST', headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, 'Content-Type': 'application/octet-stream', 'X-GitHub-Api-Version': '2026-03-10' }, body: readFileSync(join('output', name)), signal: AbortSignal.timeout(120000) });
     if (!response.ok) throw new Error(`發布資產失敗（${response.status}）；保留 draft 供排查`);

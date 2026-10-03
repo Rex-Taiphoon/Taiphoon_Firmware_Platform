@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { validateConfig, type Config } from '../shared/domain.ts';
 
@@ -6,8 +6,8 @@ export type Command = { executable: string; args: string[] };
 export function plan(value: unknown, definitionDir: string): Command[] {
   const c = validateConfig(value);
   switch (c.target) {
-    case 'ardupilot': return [{ executable: './waf', args: ['configure', '--board', 'Morakot', '--default-parameters=platform-defaults.parm'] }, { executable: './waf', args: [String(c.options.vehicle)] }];
-    case 'px4': return [{ executable: 'bash', args: ['Tools/setup/ubuntu.sh', '--no-sim-tools'] }, { executable: 'make', args: ['-j2', 'taiphoon_morakot_default'] }];
+    case 'ardupilot': return [{ executable: './waf', args: ['configure', '--board', 'Morakot', '--default-parameters=platform-defaults.parm', '--extra-hwdef=platform-extra.dat'] }, { executable: './waf', args: [String(c.options.vehicle)] }];
+    case 'px4': return [{ executable: 'bash', args: ['Tools/setup/ubuntu.sh', '--no-sim-tools'] }, { executable: 'make', args: ['-j2', 'morakot_v6_default', `PX4_CMAKE_BUILD_TYPE=${c.options.buildType}`] }];
     case 'betaflight': return [{ executable: 'make', args: ['arm_sdk_install', `BETAFLIGHT_CONFIG=${definitionDir}`] }, { executable: 'make', args: ['-j2', 'fwo', 'CONFIG=MORAKOT', `BETAFLIGHT_CONFIG=${definitionDir}`] }];
     case 'am32': return [{ executable: 'make', args: ['arm_sdk_install'] }, { executable: 'make', args: ['-j2', `MORAKOT_4IN1_ESC_60A_${c.options.variant}`] }];
     case 'inav': throw new Error('INAV MORAKOT 定義尚未提供，不能編譯');
@@ -34,17 +34,42 @@ export function amendAm32(text: string, variant: string, enabled: boolean): stri
 export function applySettings(config: Config, source: string, definition: string): void {
   const c = validateConfig(config);
   if (c.target === 'ardupilot') {
-    const original = readFileSync(join(source, 'libraries/AP_HAL_ChibiOS/hwdef/Morakot/defaults.parm'), 'utf8');
-    if (!/^OSD_TYPE2\s+5\s*$/m.test(original)) throw new Error('ArduPilot 預設定義已變更，需要重新核對');
-    writeFileSync(join(source, 'platform-defaults.parm'), original.replace(/^OSD_TYPE2\s+5\s*$/m, `OSD_TYPE2 ${c.options.osdType2}`));
+    const dir = join(source, 'libraries/AP_HAL_ChibiOS/hwdef/Morakot');
+    mkdirSync(dir, { recursive: true });
+    for (const name of ['hwdef.dat','hwdef-bl.dat','defaults.parm']) {
+      let text = c.files?.[name] ?? readFileSync(join('templates/ardupilot',name),'utf8');
+      text = text.replace(/^APJ_BOARD_ID AP_HW_Morakot$/m, 'APJ_BOARD_ID 1210');
+      writeFileSync(join(dir,name),text);
+    }
+    const original = readFileSync(join(dir, 'defaults.parm'),'utf8').replace(/^OSD_TYPE2\s+[^\n]*$/gm,'');
+    writeFileSync(join(source, 'platform-defaults.parm'), original + `\nOSD_TYPE2 ${c.options.osd ? c.options.osdType2 : '0'}\n`);
+    writeFileSync(join(source, 'platform-extra.dat'), `define OSD_ENABLED ${c.options.osd ? 1 : 0}\ndefine AP_SCRIPTING_ENABLED ${c.options.scripting ? 1 : 0}\n`);
   } else if (c.target === 'px4') {
-    const path = join(source, 'boards/taiphoon/morakot/default.px4board');
+    const dir = join(source,'boards/morakot/v6');
+    cpSync('templates/px4',dir,{recursive:true});
+    for (const [name,text] of Object.entries(c.files ?? {})) writeFileSync(join(dir,name),text);
+    const prototype = JSON.parse(readFileSync(join(dir,'firmware.prototype'),'utf8'));
+    prototype.description = 'Taiphoon Morakot v6 firmware (bootloader board ID 1105)'; prototype.summary = 'MORAKOT-V6';
+    writeFileSync(join(dir,'firmware.prototype'),JSON.stringify(prototype,null,2));
+    const path = join(dir, 'default.px4board');
     let text = readFileSync(path, 'utf8');
-    text = setPx4(text, 'CONFIG_MODULES_UXRCE_DDS_CLIENT', Boolean(c.options.dds));
-    text = setPx4(text, 'CONFIG_DRIVERS_OSD_MSP_OSD', Boolean(c.options.osd)); writeFileSync(path, text);
+    for (const [name,enabled] of [['CONFIG_MODULES_UXRCE_DDS_CLIENT',c.options.dds],['CONFIG_DRIVERS_OSD_ATXXXX',c.options.osd]] as const) {
+      text = text.replace(new RegExp(`^(?:${name}=.*|# ${name} is not set)\\r?\\n?`,'gm'),'');
+      text += `\n${enabled ? name+'=y' : '# '+name+' is not set'}\n`;
+    }
+    writeFileSync(path, text);
   } else if (c.target === 'betaflight') {
+    mkdirSync(join(definition,'configs/MORAKOT'),{recursive:true});
+    cpSync('templates/betaflight',join(definition,'configs/MORAKOT'),{recursive:true});
     const path = join(definition, 'configs/MORAKOT/config.h');
-    let text = readFileSync(path, 'utf8'); text = setDefine(text, 'USE_GPS', Boolean(c.options.gps)); text = setDefine(text, 'USE_BEEPER', Boolean(c.options.beeper)); writeFileSync(path, text);
+    writeFileSync(path,c.files?.['config.h'] ?? readFileSync(path,'utf8'));
+    const groups: Record<string,string[]> = { gps:['USE_GPS','USE_CMS_GPS'],beeper:['USE_BEEPER'],osd:['USE_OSD','USE_MAX7456','USE_FRSKYOSD'],blackbox:['USE_BLACKBOX'],telemetry:['USE_TELEMETRY','USE_MSP_OVER_TELEMETRY'] };
+    const post = join(source,'src/main/target/common_post.h');
+    let text = readFileSync(post,'utf8');
+    const headers = ['src/main/target/common_pre.h','src/main/target/common_post.h'].map(p=>readFileSync(join(source,p),'utf8')).join('\n')+readFileSync(path,'utf8');
+    const macros = [...new Set(headers.match(/\b(?:USE|ENABLE)_[A-Z0-9_]+\b/g) ?? [])];
+    for (const [key,prefixes] of Object.entries(groups)) if (!c.options[key]) for (const macro of macros.filter(m=>prefixes.some(p=>m===p||m.startsWith(p+'_')||m===p.replace('USE_','ENABLE_')||m.startsWith(p.replace('USE_','ENABLE_')+'_')))) text += `\n#undef ${macro}\n${macro.startsWith('ENABLE_') ? '#define '+macro+' 0\n' : ''}`;
+    writeFileSync(post,text);
   } else if (c.target === 'am32') {
     const path = join(source, 'Inc/targets.h'); writeFileSync(path, amendAm32(readFileSync(path, 'utf8'), String(c.options.variant), Boolean(c.options.serialTelemetry)));
   } else throw new Error('INAV 尚未接入');

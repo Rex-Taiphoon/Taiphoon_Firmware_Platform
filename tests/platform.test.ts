@@ -14,7 +14,7 @@ test('保存 → 觸發 → 發布 → 下載：結果對應同一份設定與 r
   gh.jobs = [{ name: 'publish', status: 'in_progress' }]; assert.equal((await p.status(ID)).phase, 'publishing');
   gh.publish(saved); const status = await p.status(ID);
   assert.equal(status.phase, 'success'); assert.equal(status.provenance?.configSha, saved.configSha);
-  assert.match(status.assets![0].url!, /releases\/download\/build-71-1\/arducopter.apj$/);
+  assert.match(status.assets![0].url!, /releases\/download\/ardupilot-copter-4.6.3-20261003-71-1\/arducopter.apj$/);
   assert.equal(gh.dispatchCount, 1);
 });
 test('重複保存與同時觸發不會覆寫設定或重複 dispatch', async () => {
