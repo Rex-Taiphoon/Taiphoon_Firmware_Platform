@@ -18,6 +18,7 @@ const id = requestId(process.env.REQUEST_ID), configSha = sha(process.env.CONFIG
 const repository = process.env.GITHUB_REPOSITORY!;
 const source = resolve('work/source'), definition = resolve('work/definition');
 const github = new GitHub(process.env.GITHUB_TOKEN || '');
+function transferDigest() { return createHash('sha256').update(JSON.stringify(readdirSync('output').sort().map(name=>({name,sha256:digest(join('output',name))})))).digest('hex'); }
 function digest(path: string) { return createHash('sha256').update(readFileSync(path)).digest('hex'); }
 async function snapshot(): Promise<SavedRequest> {
   const file = await github.call(`/repos/${repository}/contents/requests/${id}.json?ref=${configSha}`);
@@ -100,7 +101,9 @@ if (mode === 'prepare') {
     configDigest: createHash('sha256').update(canonicalConfig(c)).digest('hex'), workflowSha: sha(process.env.GITHUB_SHA), runId: Number(process.env.GITHUB_RUN_ID), runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT), target: c.target, toolchain, assets, ...identity };
   writeFileSync('output/changes.json',JSON.stringify(configurationChanges(s),null,2)+'\n');
   writeFileSync('output/config.json', canonicalConfig(c) + '\n'); writeFileSync('output/provenance.json', JSON.stringify(manifest, null, 2) + '\n');
+  appendFileSync(process.env.GITHUB_OUTPUT!,`transfer_hash=${transferDigest()}\n`);
 } else if (mode === 'publish') {
+  if(!/^[0-9a-f]{64}$/.test(process.env.TRANSFER_HASH || '') || transferDigest()!==process.env.TRANSFER_HASH)throw new Error('同次編譯的產物轉交雜湊不符');
   const s = await snapshot();
   const runInfo = await github.call(`/repos/${repository}/actions/runs/${process.env.GITHUB_RUN_ID}`);
   const actualRun = { id: Number(process.env.GITHUB_RUN_ID), run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT), head_sha: sha(process.env.GITHUB_SHA), run_number:runInfo.run_number, created_at:runInfo.created_at };
