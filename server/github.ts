@@ -16,14 +16,15 @@ export class GitHub {
     if (!response.ok) throw new GitHubError(response.status);
     return response.status === 204 ? undefined as T : await response.json() as T;
   }
-  async manifest(repository: string, id: number): Promise<unknown> {
+  async manifest(repository: string, id: number, maxBytes = 65536): Promise<unknown> {
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 131072) throw new Error('Invalid manifest limit');
     const r = await this.transport(`https://api.github.com/repos/${repository}/releases/assets/${id}`, {
       headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/octet-stream', 'X-GitHub-Api-Version': '2026-03-10' }, signal: AbortSignal.timeout(20000),
     });
     if (!r.ok) throw new GitHubError(r.status);
     // Bound streamed data too; Content-Length is not trusted.
     const reader = r.body!.getReader(); let text = ''; let size = 0; const decoder = new TextDecoder();
-    for (;;) { const { value, done } = await reader.read(); if (done) break; size += value.byteLength; if (size > 65536) { await reader.cancel(); throw new Error('Manifest too large'); } text += decoder.decode(value, { stream: true }); }
+    for (;;) { const { value, done } = await reader.read(); if (done) break; size += value.byteLength; if (size > maxBytes) { await reader.cancel(); throw new Error('Manifest too large'); } text += decoder.decode(value, { stream: true }); }
     return JSON.parse(text + decoder.decode());
   }
 }

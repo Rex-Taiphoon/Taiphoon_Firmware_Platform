@@ -24,7 +24,7 @@ OSD 關閉時設定 OSD_ENABLED=0、HAL_WITH_MSP_DISPLAYPORT=0、HAL_WITH_OSD_BI
 
 Rex fork 沒有提供 v1.18.0-beta1 tag。流程只從官方 PX4/PX4-Autopilot 取得該 tag，核對 annotated tag object d90ac5b79200c44895c03ee7c284b20b80ecf75d，並驗證 describe 與固定源的祖先關係；不是替换韌體原始碼。韌體版本為 v1.18.0-beta1-6-g186ad6d691。封装與 publish 均驗證完整 git_hash、board ID、解壓映像大小與內嵌版本，防止 v0.0.0 或超出刷寫容量的套件被發布。
 
-Release 使用 MinSizeRel；LTO 預設启用。DDS／ATXXXX OSD 在 px4board 實際切換。init 編輯限定數值參數與受控驅動 start，不接受通用 shell。
+Release 使用 MinSizeRel；LTO 預設啟用，DDS 預設停用。開啟 DDS 的實際 LTO 映像為 1,720,524 bytes，仍大於附件 bootloader 套件上限 1,703,936 bytes，因此拒絕發布。DDS／ATXXXX OSD 在 px4board 實際切換。init 編輯限定數值參數與受控驅動 start，不接受通用 shell。
 
 ## Betaflight
 

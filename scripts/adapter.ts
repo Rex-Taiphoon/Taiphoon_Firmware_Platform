@@ -63,7 +63,7 @@ export function applySettings(config: Config, source: string, definition: string
     cpSync('templates/betaflight',join(definition,'configs/MORAKOT'),{recursive:true});
     const path = join(definition, 'configs/MORAKOT/config.h');
     writeFileSync(path,c.files?.['config.h'] ?? readFileSync(path,'utf8'));
-    const groups: Record<string,string[]> = { gps:['USE_GPS','USE_CMS_GPS'],beeper:['USE_BEEPER'],osd:['USE_OSD','USE_MAX7456','USE_FRSKYOSD'],blackbox:['USE_BLACKBOX'],telemetry:['USE_TELEMETRY','USE_MSP_OVER_TELEMETRY'] };
+    const groups: Record<string,string[]> = { gps:['USE_GPS','USE_CMS_GPS'],beeper:['USE_BEEPER'],osd:['USE_OSD','USE_MAX7456','USE_FRSKYOSD'],blackbox:['USE_BLACKBOX'],telemetry:['USE_TELEMETRY','USE_MSP_OVER_TELEMETRY','USE_SERIALRX_FPORT'] };
     const post = join(source,'src/main/target/common_post.h');
     let text = readFileSync(post,'utf8');
     const headers = ['src/main/target/common_pre.h','src/main/target/common_post.h'].map(p=>readFileSync(join(source,p),'utf8')).join('\n')+readFileSync(path,'utf8');

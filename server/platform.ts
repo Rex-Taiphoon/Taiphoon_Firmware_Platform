@@ -115,7 +115,7 @@ export class Platform {
       if (!manifestAsset || manifestAsset.size > 65536 || !configAsset || configAsset.size > 131072) throw new ValidationError('Release 缺少版本資訊或設定快照');
       const digest = createHash('sha256').update(canonicalConfig(saved.config)).digest('hex');
       const manifest = verifyProvenance(await this.github.manifest(this.repository, manifestAsset.id), saved, run, digest);
-      if (canonicalConfig(await this.github.manifest(this.repository, configAsset.id)) !== canonicalConfig(saved.config)) throw new ValidationError('Release 設定快照內容不一致');
+      if (canonicalConfig(await this.github.manifest(this.repository, configAsset.id, 131072)) !== canonicalConfig(saved.config)) throw new ValidationError('Release 設定快照內容不一致');
       const assets = manifest.assets.map(a => {
         const actual = release.assets.find((r: any) => r.name === a.name);
         if (!actual || actual.size !== a.size || (actual.digest && actual.digest !== `sha256:${a.sha256}`)) throw new ValidationError('Release 資產缺失或雜湊不符');

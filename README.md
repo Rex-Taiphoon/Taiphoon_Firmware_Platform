@@ -24,7 +24,7 @@ React + TypeScript 的 Morakot 線上配置與雲端編譯平台。正式操作�
 
 來源固定完整 SHA，詳見 [targets.md](docs/targets.md)。此 ArduPilot 來源的 Copter／Plane／Rover 為 4.6.3，Sub 為 **4.6.0-dev**，檔名與 Release 依載具標記正確版本。Betaflight 使用附件配置及同版官方固定來源，原 ZIP 的完整 source SHA 尚未確認，不能宣稱二進位重現原 ZIP。
 
-功能選項優先於檔案中對應定義。關閉 OSD 會移除程式／驅動，不只是改預設參數。PX4 Release 使用 MinSizeRel，LTO 預設啟用；Debug、停用最佳化或增加太多模組可能超過容量，流程會失敗而不發布。
+功能選項優先於檔案中對應定義。關閉 OSD 會移除程式／驅動，不只是改預設參數。PX4 Release 使用 MinSizeRel，LTO 預設啟用，DDS 預設停用；Debug、停用最佳化或增加太多模組可能超過容量，流程會失敗而不發布。Betaflight 停用遙測也會停用依賴 SmartPort 的 FPort 接收協定。
 
 路徑、Morakot MCU、board ID 受控。init 僅接受數值參數與指定驅動 start；禁止 shell 展開、管線、重導向或任意程式。hwdef 禁止 include／ROMFS／環境修改，config.h 禁止引用主機檔案。單檔最多 32768 字元，提交 body 最多 128 KiB；不要保存密碼或金鑰。
 
