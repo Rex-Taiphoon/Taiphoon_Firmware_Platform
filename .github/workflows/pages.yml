@@ -1,9 +1,9 @@
-name: Publish Pages manually
+name: Build frontend assets
 on:
   workflow_dispatch:
     inputs:
       confirmed:
-        description: I confirm publishing the platform to GitHub Pages
+        description: Build public frontend assets for the separate Pages repository
         required: true
         default: false
         type: boolean
@@ -31,20 +31,10 @@ jobs:
       - run: pnpm build
         env:
           VITE_API_URL: ${{ vars.PLATFORM_API_URL }}
-          PAGES_BASE_PATH: /Taiphoon_Firmware_Platform/
-      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+          PAGES_BASE_PATH: /Taiphoon_Firmware_Pages/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
+          name: frontend-pages
           path: dist
-  deploy:
-    needs: build
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+          retention-days: 1
+          if-no-files-found: error

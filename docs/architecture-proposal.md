@@ -1,6 +1,6 @@
 # 線上設定與雲端編譯平台：第一版提案
 
-狀態：React + TypeScript、GitHub App + 無伺服器 API 已由使用者確認，並完成本地實作與流程範本。已將程式上傳至私人平台 repository，ArduPilot / Morakot Copter 已通過不發布 Release 的真實雲端編譯、下載及產物核對。尚未部署 Pages／API；實際結果見 docs/verification.md，操作文件見 README.md。
+狀態：Pages 專用公開 repository 與 Cloudflare Workers API 已部署，GitHub App 已建立，三平台配置編輯及獨立編譯／發布流程已實作。App 安裝與正式瀏覽器端到端驗證尚須完成；各雲端工作結果見 verification.md。
 
 ## 現況與範圍
 
@@ -24,7 +24,7 @@
 
 ### 建議：GitHub App 加無伺服器 API
 
-Pages 經由無伺服器 API 操作 GitHub。GitHub App 私鑰、登入交換所需秘密及 installation token 均留在 API 的秘密儲存與伺服器記憶體，不進入前端、repository 或紀錄。此 API 處理授權及短時間的 GitHub API 呼叫，不承擔編譯。
+Pages 經由無伺服器 API 操作 GitHub。登入交換 client secret 與 session key 留在 Cloudflare 秘密管理；操作使用受 App 安裝與使用者資格限制的 user access token，不保存 App 私鑰或使用 installation token。前端只持有加密平台 session，不取得 GitHub token。此 API 處理授權及短時間的 GitHub API 呼叫，不承擔編譯。
 
 登入後仍須驗證該使用者對目標 repository 的寫入資格；不能只因 App 已安裝就允許任何登入者使用。API 固定 repository、設定路徑、workflow 與目標 allowlist，並驗證設定型別、範圍及大小。登入需驗證 state，跨來源請求及 session 需設計 CSRF 防護；紀錄需排除 Authorization、cookie、私鑰及交換碼。
 

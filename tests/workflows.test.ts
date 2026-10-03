@@ -29,6 +29,6 @@ test('Pages 只手動发布 dist，不帶韌體或憑證', () => {
   const w = parse(readFileSync('.github/workflows/pages.yml', 'utf8'));
   assert.deepEqual(Object.keys(w.on), ['workflow_dispatch']); assert.equal(w.on.workflow_dispatch.inputs.confirmed.default, false);
   assert.equal(w.jobs.build.if, 'inputs.confirmed');
-  const upload = w.jobs.build.steps.find((s: any) => s.uses?.startsWith('actions/upload-pages-artifact'));
-  assert.equal(upload.with.path, 'dist'); assert.ok(!JSON.stringify(w.jobs.build).includes('secrets.'));
+  const upload = w.jobs.build.steps.find((s: any) => s.uses?.startsWith('actions/upload-artifact'));
+  assert.equal(upload.with.path, 'dist'); assert.equal(w.jobs.deploy, undefined); assert.ok(!JSON.stringify(w.jobs.build).includes('secrets.'));
 });
