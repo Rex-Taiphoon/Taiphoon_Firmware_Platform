@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { seal, unseal } from './crypto.ts';
-import { GitHub, GitHubError, installationClient, type Environment, type Fetch } from './github.ts';
+import { GitHub, GitHubError, type Environment, type Fetch } from './github.ts';
 import { Platform, PlatformError } from './platform.ts';
 import { ValidationError, object, requestId } from '../shared/domain.ts';
 import { targets } from '../shared/catalog.ts';

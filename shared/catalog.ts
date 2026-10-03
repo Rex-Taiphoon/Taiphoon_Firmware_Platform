@@ -4,10 +4,10 @@ export type Target = {
   id: FirmwareId; name: string; board: string; description: string; repository: string;
   ref: string; sourceSha: string; definitionPath: string; definition?: { repository: string; sha: string; path: string };
   available: boolean; note: string; fields: Field[];
-  version?: string; editableFiles?: string[]; workflow?: string;
+  version?: string; vehicleVersions?: Record<string,string>; editableFiles?: string[]; workflow?: string;
 };
 export const targets: Target[] = [
-  { id: 'ardupilot', name: 'ArduPilot', board: 'Morakot', description: '4.6.3 · Copter / Plane / Rover / Sub', repository: 'Rex-Taiphoon/ardupilot', ref: '92b0cd78', sourceSha: '92b0cd788ec29406f26c6f9c31d5ceedbd1cc538', definitionPath: 'libraries/AP_HAL_ChibiOS/hwdef/Morakot/hwdef.dat', version: '4.6.3', workflow: 'ardupilot.yml', editableFiles: ['hwdef.dat', 'hwdef-bl.dat', 'defaults.parm'], available: true, note: '使用附件 4.6.3 原始碼版本與 Morakot 配置', fields: [
+  { id: 'ardupilot', name: 'ArduPilot', board: 'Morakot', description: 'Copter / Plane / Rover 4.6.3 · Sub 4.6.0-dev', repository: 'Rex-Taiphoon/ardupilot', ref: '92b0cd78', sourceSha: '92b0cd788ec29406f26c6f9c31d5ceedbd1cc538', definitionPath: 'libraries/AP_HAL_ChibiOS/hwdef/Morakot/hwdef.dat', version: '4.6.3', vehicleVersions: {copter:'4.6.3',plane:'4.6.3',rover:'4.6.3',sub:'4.6.0-dev'}, workflow: 'ardupilot.yml', editableFiles: ['hwdef.dat', 'hwdef-bl.dat', 'defaults.parm'], available: true, note: '使用附件固定來源與 Morakot 配置；此來源的 Sub 版本為 4.6.0-dev', fields: [
     { key: 'vehicle', label: '載具韌體', kind: 'choice', default: 'copter', choices: [{ value: 'copter', label: 'Copter 多旋翼' }, { value: 'plane', label: 'Plane 固定翼' }, { value: 'rover', label: 'Rover 地面載具' }, { value: 'sub', label: 'Sub 水下載具' }] },
     { key: 'osd', label: '編譯 OSD（停用時移除 OSD 程式）', kind: 'boolean', default: true },
     { key: 'scripting', label: '包含 Lua 腳本支援', kind: 'boolean', default: true },
@@ -17,6 +17,7 @@ export const targets: Target[] = [
     { key: 'dds', label: '包含 uXRCE-DDS 模組', kind: 'boolean', default: true },
     { key: 'osd', label: '包含 ATXXXX OSD 驅動', kind: 'boolean', default: false },
     { key: 'buildType', label: '編譯模式', kind: 'choice', default: 'Release', choices: [{ value: 'Release', label: 'Release 最佳化' }, { value: 'Debug', label: 'Debug 除錯' }] },
+    { key: 'lto', label: '連結最佳化 LTO（縮小韌體）', kind: 'boolean', default: true },
   ] },
   { id: 'betaflight', name: 'Betaflight', board: 'MORAKOT / STM32H743', description: '2026.12.0-alpha · MORAKOT', repository: 'betaflight/betaflight', ref: '2026-08-23', sourceSha: '1b53ace8356cc43f3c8359ed2357255ba789ca73', definitionPath: 'configs/MORAKOT/config.h', version: '2026.12.0-alpha', workflow: 'betaflight.yml', editableFiles: ['config.h'], available: true, note: '附件硬體 config；原 ZIP source SHA 未確認，使用相同版本的官方 2026-08-23 固定來源', fields: [
     { key: 'gps', label: '包含 GPS 功能', kind: 'boolean', default: true },

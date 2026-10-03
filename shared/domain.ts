@@ -61,9 +61,10 @@ export function sha(value: unknown): string {
 export function canonicalConfig(value: unknown): string { return JSON.stringify(validateConfig(value)); }
 export function releaseIdentity(saved: Snapshot, runId: number, attempt: number) {
   const t = targetFor(saved.config.target), date = saved.createdAt.slice(0,10).replaceAll('-','');
-  const version = (t.version || t.sourceSha.slice(0,12)).replace(/[^A-Za-z0-9._-]/g,'-');
   const variant = String(saved.config.options.vehicle || saved.config.options.variant || 'Morakot');
-  return { firmwareVersion: t.version || t.sourceSha.slice(0,12), buildDate: saved.createdAt.slice(0,10), variant,
+  const firmwareVersion = t.vehicleVersions?.[variant] || t.version || t.sourceSha.slice(0,12);
+  const version = firmwareVersion.replace(/[^A-Za-z0-9._-]/g,'-');
+  return { firmwareVersion, buildDate: saved.createdAt.slice(0,10), variant,
     releaseTag: `${t.id}-${variant}-${version}-${date}-${runId}-${attempt}` };
 }
 export function verifyProvenance(p: unknown, saved: SavedRequest, run: { id: number; run_attempt: number; head_sha: string }, digest: string): Provenance {

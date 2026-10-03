@@ -76,6 +76,7 @@ jobs:
           repository: ${{ needs.validate.outputs.source_repository }}
           ref: ${{ needs.validate.outputs.source_sha }}
           path: work/source
+          fetch-depth: 0
           submodules: recursive
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

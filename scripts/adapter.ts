@@ -53,7 +53,7 @@ export function applySettings(config: Config, source: string, definition: string
     writeFileSync(join(dir,'firmware.prototype'),JSON.stringify(prototype,null,2));
     const path = join(dir, 'default.px4board');
     let text = readFileSync(path, 'utf8');
-    for (const [name,enabled] of [['CONFIG_MODULES_UXRCE_DDS_CLIENT',c.options.dds],['CONFIG_DRIVERS_OSD_ATXXXX',c.options.osd]] as const) {
+    for (const [name,enabled] of [['CONFIG_MODULES_UXRCE_DDS_CLIENT',c.options.dds],['CONFIG_DRIVERS_OSD_ATXXXX',c.options.osd],['CONFIG_BOARD_LTO',c.options.lto]] as const) {
       text = text.replace(new RegExp(`^(?:${name}=.*|# ${name} is not set)\\r?\\n?`,'gm'),'');
       text += `\n${enabled ? name+'=y' : '# '+name+' is not set'}\n`;
     }

@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes, createSign } from 'node:
 
 export function seal(value: unknown, key: string): string {
   const iv = randomBytes(12), cipher = createCipheriv('aes-256-gcm', Buffer.from(key, 'base64url'), iv);
-  return Buffer.concat([iv, cipher.update(JSON.stringify(value)), cipher.final(), cipher.getAuthTag()]).toString('base64url');
+  return Buffer.concat([iv, cipher.update(JSON.stringify(value), 'utf8'), cipher.final(), cipher.getAuthTag()]).toString('base64url');
 }
 export function unseal<T>(token: string, key: string): T {
   const data = Buffer.from(token, 'base64url');

@@ -30,10 +30,11 @@ export class GitHub {
 export type Environment = {
   PAGES_ORIGIN: string; API_ORIGIN: string; GITHUB_OWNER: string; GITHUB_REPO: string;
   GITHUB_CONFIG_BRANCH: string; GITHUB_WORKFLOW_REF: string; GITHUB_WORKFLOW_FILE: string;
-  GITHUB_APP_ID: string; GITHUB_APP_CLIENT_ID: string; GITHUB_APP_CLIENT_SECRET: string;
-  GITHUB_APP_INSTALLATION_ID: string; GITHUB_APP_PRIVATE_KEY: string; SESSION_KEY: string;
+  GITHUB_APP_CLIENT_ID: string; GITHUB_APP_CLIENT_SECRET: string; SESSION_KEY: string;
+  GITHUB_APP_ID?: string; GITHUB_APP_INSTALLATION_ID?: string; GITHUB_APP_PRIVATE_KEY?: string;
 };
 export async function installationClient(env: Environment, transport: Fetch): Promise<GitHub> {
+  if (!env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY || !env.GITHUB_APP_INSTALLATION_ID) throw new Error('Installation credentials not configured');
   const app = new GitHub(appJwt(env.GITHUB_APP_ID, env.GITHUB_APP_PRIVATE_KEY), transport);
   const result = await app.call(`/app/installations/${env.GITHUB_APP_INSTALLATION_ID}/access_tokens`, 'POST', {
     repositories: [env.GITHUB_REPO],

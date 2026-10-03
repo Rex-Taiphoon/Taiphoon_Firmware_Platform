@@ -22,6 +22,7 @@
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "esbuild": "0.25.12",
+    "miniflare": "5.20261001.0-alpha",
     "typescript": "5.9.3",
     "vite": "7.2.2",
     "wrangler": "4.147.0",

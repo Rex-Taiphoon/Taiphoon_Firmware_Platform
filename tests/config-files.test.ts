@@ -25,4 +25,5 @@ test('Release 標籤同時區分平台、載具、版本、日期與重試',()=>
   const s = savedFixture();
   assert.equal(releaseIdentity(s,71,1).releaseTag,'ardupilot-copter-4.6.3-20261003-71-1');
   assert.notEqual(releaseIdentity(s,71,1).releaseTag,releaseIdentity(s,71,2).releaseTag);
+  assert.equal(releaseIdentity({...s,config:{...s.config,options:{...s.config.options,vehicle:'sub'}}},72,1).firmwareVersion,'4.6.0-dev');
 });

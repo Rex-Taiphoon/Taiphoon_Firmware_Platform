@@ -27,6 +27,9 @@ importers:
       esbuild:
         specifier: 0.25.12
         version: 0.25.12
+      miniflare:
+        specifier: 5.20261001.0-alpha
+        version: 5.20261001.0-alpha(@types/node@24.10.1)
       typescript:
         specifier: 5.9.3
         version: 5.9.3

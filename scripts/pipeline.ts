@@ -7,6 +7,7 @@ import { validateConfig, canonicalConfig, requestId, sha, verifyProvenance, rele
 import { targetFor } from '../shared/catalog.ts';
 import { plan, applySettings } from './adapter.ts';
 import { gitSafetyEnvironment } from './container.ts';
+import { verifyPx4 } from './packages.ts';
 
 const mode = process.argv[2];
 if (process.env.GITHUB_ACTIONS !== 'true') throw new Error('此腳本僅供經確認的 GitHub Actions 工作執行；本地請使用測試');
@@ -71,6 +72,7 @@ if (mode === 'prepare') {
   const directory = c.target === 'ardupilot' ? join(source, 'build/Morakot/bin') : c.target === 'px4' ? join(source, 'build/morakot_v6_default') : join(source, 'obj');
   const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? name !== 'AP_Bootloader.bin' && /\.(apj|bin)$/.test(name) : c.target === 'px4' ? name === 'morakot_v6_default.px4' : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
   if (!files.length) throw new Error('編譯成功但找不到目標產物');
+  if (c.target === 'px4') verifyPx4(readFileSync(join(directory,files[0])),s.sourceSha,target.version);
   const identity = releaseIdentity(s,Number(process.env.GITHUB_RUN_ID),Number(process.env.GITHUB_RUN_ATTEMPT));
   const names = files.map(name => ({ original:name, renamed:`${identity.releaseTag}${name.slice(name.lastIndexOf('.'))}` }));
   for (const {original,renamed} of names) { if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,100}$/.test(renamed) || !lstatSync(join(directory, original)).isFile()) throw new Error('無效產物'); copyFileSync(join(directory, original), join('output', renamed)); }
@@ -90,6 +92,7 @@ if (mode === 'prepare') {
   if (readdirSync('output').sort().join(',') !== expected.join(',')) throw new Error('產物包含未允許的檔案');
   for (const name of expected) if (!lstatSync(join('output', name)).isFile() || statSync(join('output', name)).size > 104857600) throw new Error('無效產物或大小超出限制');
   for (const asset of manifest.assets) if (digest(join('output', asset.name)) !== asset.sha256 || statSync(join('output', asset.name)).size !== asset.size) throw new Error('產物雜湊或大小不符');
+  if (s.config.target === 'px4') for (const asset of manifest.assets) verifyPx4(readFileSync(join('output',asset.name)),s.sourceSha,targetFor('px4').version);
   const tag = releaseIdentity(s,actualRun.id,actualRun.run_attempt).releaseTag;
   let existing: any; try { existing = await github.call(`/repos/${repository}/releases/tags/${tag}`); } catch (e) { if (!(e instanceof GitHubError && e.status === 404)) throw e; }
   if (existing) throw new Error('此 Release 已存在，不覆寫既有結果');
