@@ -15,6 +15,7 @@ function packagePair(){
 }
 test('Bootloader BIN／ELF 核對內容、向量、MCU、Flash 起點與保留容量',()=>{
   const {binary,elf}=packagePair();assert.equal(verifyPx4Bootloader(binary,elf).flashAddress,'0x08000000');
+  binary.writeUInt32LE(0x240032fc);binary.copy(elf,84);verifyPx4Bootloader(binary,elf);
   for(const corrupt of [()=>{binary[12]^=1;},()=>binary.writeUInt32LE(0x08020009,4),()=>elf.writeUInt32LE(0x08020000,64),()=>elf.writeUInt16LE(62,18)]){
     const pair=packagePair();pair.binary.copy(binary);pair.elf.copy(elf);corrupt();assert.throws(()=>verifyPx4Bootloader(binary,elf));
   }

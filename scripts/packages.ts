@@ -4,7 +4,8 @@ export function verifyPx4Bootloader(binary:Buffer,elf:Buffer) {
   if(binary.length<8 || binary.length>131072 || elf.length<52 || elf.subarray(0,7).toString('hex')!=='7f454c46010101' || elf.readUInt16LE(16)!==2 || elf.readUInt16LE(18)!==40)throw new Error('PX4 Bootloader 格式或 128 KiB 容量不符');
   const stack=binary.readUInt32LE(0),reset=binary.readUInt32LE(4);
   const ram=[[0x20000000,0x20020000],[0x24000000,0x24080000],[0x30000000,0x30048000],[0x38000000,0x38010000]];
-  if(stack%8 || !ram.some(([a,b])=>stack>a&&stack<=b) || !(reset&1) || (reset&~1)<0x08000000 || (reset&~1)>=0x08000000+binary.length)throw new Error('PX4 Bootloader 向量或 Flash 起始位址不符');
+  // NuttX initializes SP from _ebss + IDLETHREAD_STACKSIZE; the supplied linker aligns _ebss to 4.
+  if(stack%4 || !ram.some(([a,b])=>stack>a&&stack<=b) || !(reset&1) || (reset&~1)<0x08000000 || (reset&~1)>=0x08000000+binary.length)throw new Error(`PX4 Bootloader 向量或 Flash 起始位址不符（SP=0x${stack.toString(16)}，Reset=0x${reset.toString(16)}）`);
   const offset=elf.readUInt32LE(28),size=elf.readUInt16LE(42),count=elf.readUInt16LE(44);
   if(size!==32 || !count || offset+size*count>elf.length)throw new Error('PX4 Bootloader ELF 區段無效');
   const segments=[];

@@ -31,7 +31,7 @@ workflow tag 需保留、不移動或刪除；可用 GitHub tag ruleset 限制�
 
 ## 命名與修改摘要
 
-新版：`ArduPilot4.6.3-Morakot-20261003-82`。日期取 Actions 工作 run_started_at（沒有時使用 created_at），轉為 Asia/Taipei；82 是該 workflow 的 run_number，不是每天歸零的計數。重跑第二次加 `-r2`。載具／ESC variant 記錄在 Release 描述及 provenance.json。AM32 使用固定來源 Inc/version.h 的 2.20，沒有以來源 SHA 代替名稱。PX4 顯示上游版本 1.18.0-beta1，Git describe 的距離與 SHA 僅留在 provenance。舊 schema-1 Release 標籤保持原格式。
+新版：`ArduPilot-4.6.3-Morakot-20261003-82`。日期取 Actions 工作 run_started_at（沒有時使用 created_at），轉為 Asia/Taipei；82 是該 workflow 的 run_number，不是每天歸零的計數。重跑第二次加 `-r2`。載具／ESC variant 記錄在 Release 描述及 provenance.json。AM32 使用固定來源 Inc/version.h 的 2.20，沒有以來源 SHA 代替名稱。PX4 顯示上游版本 1.18.0-beta1，Git describe 的距離與 SHA 僅留在 provenance。舊 schema-1 Release 標籤保持原格式。
 
 Release 描述列出相對於所選版本預設模板的參數修改、變更檔案及簡短增刪行摘錄。changes.json 保存完整增刪行清單和修改前後檔案 hash；若只調整行序會標示行序變更，完整順序看 config.json。參數與檔案的摘要不是「與上一個使用者工作」比較，也不是上游原始碼 changelog。模板本身已包含 Morakot 移植。
 
@@ -41,6 +41,17 @@ config.json 是該次完整設定；provenance.json 記錄來源／配置／流�
 
 本次驗證遇到 GitHub Actions Artifact 儲存配額滿。新版 validate、build 各自透過 API 讀取同一 config commit 的快照，不傳遞配置 Artifact。build 使用官方 actions/cache/save，以 run ID＋attempt＋workflow SHA 的唯一 key 暫存 output；publish 只精確恢復此 key，拒絕 cache miss，並比對可信 build job output 的整包 SHA-256，再驗證快照／provenance／實際套件。編譯仍只有 Contents read，發布 job 才取得 Contents write。
 
-Cache 是短期轉交媒介，可能被 GitHub 淘汰；不可用作下載歷史。最終結果在 Releases。只編譯模式不保存 cache／Release；可从 Actions 日志核對結果。重新執行使用 Re-run all jobs。Cache 本身亦有容量及權限限制；若失敗，查看 Transfer／Restore 步驟，勿以其他工作的 cache 代替。沒有調整付費額度或刪除現有 Release。
+Cache 是短期轉交媒介，可能被 GitHub 淘汰；不可用作下載歷史。最終結果在 Releases。只編譯模式不保存 cache／Release；可从 Actions 日志核對結果。重新執行使用 Re-run all jobs。Cache 本身亦有容量及權限限制；若失敗，查看 Transfer／Restore 步驟，勿以其他工作的 cache 代替。沒有調整付費額度；Release 清理由使用者另行授權。
 
 參考：[官方 cache action](https://github.com/actions/cache)、[GitHub cache 限制](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)、[官方 PX4 1.17.0](https://github.com/PX4/PX4-Autopilot/releases/tag/v1.17.0)。
+
+
+## PX4 Bootloader 與 4.7.0
+
+PX4 1.17.0 與 1.18.0-beta1 的新版 r2 profile 提供「編譯內容」選擇。主韌體使用 morakot_v6_default，輸出 .px4；Bootloader 使用 morakot_v6_bootloader，輸出 .bin 與 .elf。Bootloader 原樣套用 bootloader.px4board、NuttX bootloader defconfig、linker script 及板級程式；DDS 與主韌體 LTO 不套用。可在 Bootloader 配置檔控制需要的編譯設定。
+
+Bootloader 名稱例：`PX4-1.17.0-Morakot-Bootloader-20261003-15`；主韌體例：`PX4-1.17.0-Morakot-20261003-16`。使用 SWD／DFU，Flash 位址 0x08000000，保留容量 128 KiB，主韌體起點 0x08020000；不可把 Bootloader 當作 .px4 更新。流程驗證 ARM ELF、BIN／ELF 的映像一致性、向量表、起點與容量。尚未實機刷寫。
+
+ArduPilot 4.7.0 使用官方 ArduPilot/ardupilot 的 Copter-4.7.0，固定來源 1511f27194f1dcc3728270883047bdf022b3fd53，搭配獨立 Morakot 模板。官方已有 4.7.1；目前依指定加入 4.7.0，並未把 4.7.0 標成永遠最新版本。
+
+platform-build-v2-5 起，新 Release tag、顯示名稱與產物檔名均以「平台-版本」開頭。既有五個已驗證 Release 只修正顯示名稱；原 tag、產物、快照與 provenance 保留，避免破壞歷史下載與版本核對。歷史 r1 PX4 profile 可讀取，建立新工作請選擇 r2。

@@ -17,7 +17,7 @@ React + TypeScript 的 Morakot 線上配置與雲端編譯平台。正式操作�
 | 平台 | 配置編輯器 | 編譯選項 |
 | --- | --- | --- |
 | ArduPilot | hwdef/Morakot 完整文字目錄：3 檔 | Copter／Plane／Rover／Sub、Lua；OSD 由配置決定 |
-| PX4 | boards/morakot/v6 完整文字目錄：24 檔，含 init、src、NuttX、CMake、linker | 版本選擇、DDS、Release／Debug、LTO；OSD 由配置決定 |
+| PX4 | boards/morakot/v6 完整文字目錄：24 檔，含 init、src、NuttX、CMake、linker | 版本選擇、主韌體／Bootloader、DDS、Release／Debug、LTO；OSD 由配置決定 |
 | Betaflight | configs/MORAKOT：config.h、config.c | GPS、蜂鳴器、Blackbox、遙測；OSD 由配置決定 |
 | AM32 | 共用 Inc/targets.h 中的 Morakot 定義 | G071／L431 CAN、序列遙測；G071 已雲端驗收 |
 | INAV | 等待 Morakot 定義 | 禁止提交 |
@@ -37,7 +37,7 @@ React + TypeScript 的 Morakot 線上配置與雲端編譯平台。正式操作�
 
 重新整理後需再次登入，以網址 request 或「找回已保存的工作」讀取。session 與私人配置不寫入 localStorage。修改設定須另存版本；已送出工作使用原快照。逾時不自動重送，會以 request ID 查回，避免重複工作。
 
-新版 Release／檔名以原平台版本、Morakot、台灣日期與 Actions 工作流水號識別，例如 `ArduPilot4.6.3-Morakot-20261003-82`；重跑加 `-r2`。描述簡潔列出相對該版本模板的修改，附 `changes.json`、`config.json` 與 `provenance.json`。舊快照／Release 保持原格式。版本切換、新增版本、固定流程 tag 及暫存配額詳見 [versions.md](docs/versions.md)。
+新版 Release／檔名以原平台版本、Morakot、台灣日期與 Actions 工作流水號識別，例如 `ArduPilot-4.6.3-Morakot-20261003-82`；重跑加 `-r2`。描述簡潔列出相對該版本模板的修改，附 `changes.json`、`config.json` 與 `provenance.json`。舊快照／Release 保持原格式。版本切換、新增版本、固定流程 tag 及暫存配額詳見 [versions.md](docs/versions.md)。
 
 ## App 與 API
 
@@ -103,3 +103,14 @@ PX4 的 bootloader 檔案也可編輯、保存；目前 workflow 編譯的是 de
 每份配置 JSON 上限為 192 KiB，HTTP 提交上限為 256 KiB。C／C++ 只可引用這個平台既有的 header，不允許主機檔案、任意 pragma 或組合語言嵌入。CMake 允許既有 board 的來源清單、依賴與數值定義；禁止 execute_process、自訂執行命令或工具鏈替換。Kconfig／linker 保留 MCU、建置路徑、board ID 與刷寫容量，不能藉編輯提升容量上限。
 
 Betaflight 停用 Blackbox 也移除依賴它的 USB MSC；停用遙測也移除 FPort、Jeti EX Bus、MAVLink 接收與 CRSF v3 遙測功能，基本 CRSF 接收保留。
+
+
+## PX4 Bootloader 與 4.7.0
+
+PX4 1.17.0 與 1.18.0-beta1 的新版 r2 profile 提供「編譯內容」選擇。主韌體使用 morakot_v6_default，輸出 .px4；Bootloader 使用 morakot_v6_bootloader，輸出 .bin 與 .elf。Bootloader 原樣套用 bootloader.px4board、NuttX bootloader defconfig、linker script 及板級程式；DDS 與主韌體 LTO 不套用。可在 Bootloader 配置檔控制需要的編譯設定。
+
+Bootloader 名稱例：`PX4-1.17.0-Morakot-Bootloader-20261003-15`；主韌體例：`PX4-1.17.0-Morakot-20261003-16`。使用 SWD／DFU，Flash 位址 0x08000000，保留容量 128 KiB，主韌體起點 0x08020000；不可把 Bootloader 當作 .px4 更新。流程驗證 ARM ELF、BIN／ELF 的映像一致性、向量表、起點與容量。尚未實機刷寫。
+
+ArduPilot 4.7.0 使用官方 ArduPilot/ardupilot 的 Copter-4.7.0，固定來源 1511f27194f1dcc3728270883047bdf022b3fd53，搭配獨立 Morakot 模板。官方已有 4.7.1；目前依指定加入 4.7.0，並未把 4.7.0 標成永遠最新版本。
+
+platform-build-v2-5 起，新 Release tag、顯示名稱與產物檔名均以「平台-版本」開頭。既有五個已驗證 Release 只修正顯示名稱；原 tag、產物、快照與 provenance 保留，避免破壞歷史下載與版本核對。歷史 r1 PX4 profile 可讀取，建立新工作請選擇 r2。
