@@ -10,7 +10,7 @@ Pages → Workers API → 私人配置快照 → GitHub Actions → 私人 Relea
 
 ## 版本資料
 
-shared/catalog.ts 保留舊 targets，另提供 profiles。每個 profile ID 含平台、原平台版本、Morakot 與 r1／r2。內容包含完整來源 SHA、模板 key／SHA-256、功能白名單、adapter 修訂及固定容器 digest。顯示用 note、description、ref 不納入編譯設定雜湊。
+shared/catalog.ts 保留舊 targets，另提供 profiles。profile ID 用於識別平台、原平台版本與配置修訂，不是顯示給使用者的韌體版本。內容包含完整來源 SHA、模板 key／SHA-256、功能白名單、adapter 修訂及固定容器 digest（使用容器時）。顯示用 note、description、ref 不納入編譯設定雜湊。
 
 同一 profile 的編譯設定不可覆寫。來源、模板、工具鏈或規則變更時新增 profile ID／模板目錄，保留舊 profile。server/build-profile.ts 在 API 與 Actions 中獨立核對 profileDigest。檔案與安全規則依所選模板驗證。
 

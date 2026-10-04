@@ -1,6 +1,21 @@
 # 驗證紀錄
 
-## 最新：官方版本來源與 PX4 Bootloader（2026-10-04）
+## 最新：Morakot INAV 9.1.0（2026-10-04）
+
+官方 iNavFlight/inav 9.1.0 commit `e519b69b02e27c8bdc03b4a0889f1baaae211a54` 加上 Morakot 板級定義，已完成 GitHub Actions 編譯、私人 Release 發布及實際下載核對。預設模板為 `templates/inav-9.1.0-r2/` 的五個檔案，版本選單顯示 9.1.0；r2 只作內部配置識別。
+
+- [Actions 37194171193](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37194171193)：validate／build／publish 全部成功，固定流程 tag platform-build-v2-13，commit `f5e61d0a6b4d57596ab446e7911e0cf3706e799c`。
+- [INAV-9.1.0-Morakot-20261004-2](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/releases/tag/INAV-9.1.0-Morakot-20261004-2)：BIN 906,795 bytes；HEX 1,816,389 bytes。名稱不含配置修訂／source hash。附 config.json、changes.json、provenance.json。
+- 配置 commit `b3ae82e4d7f183bdcd2fe37f0b532d29357453da`，request `04920e17-094a-4b8f-9655-0405c7204cd6`；測試保存五個完整檔案，config.c 加入驗證註解，Release 修改清單對應同一快照。
+- BIN SHA-256 `f254bd2eb48aebca9d1f811aadbd6c29dd6d0e6a2f7910c86c343332761b44bb`；HEX SHA-256 `53f6945bc48db0bcd75b267350fae74179003acf68d6cf33ffc0abe17bcdcf8f`。已核對 GitHub asset digest 與實際下載 bytes、HEX checksum／位址／BIN 補零內容、ARM 向量、板名、內嵌版本及來源短 SHA。
+- ARM GNU gcc 13.2.1，Release、WARNINGS_AS_ERRORS=ON。FLASH 使用 1,080 bytes／128 KiB；FLASH1 使用 644,651 bytes／1,792 KiB。BIN 包含配置區補零，因此檔案大小不同於有效程式區使用量。
+- 57 項 Node 測試、TypeScript、Vite production build、API bundle 通過；新增 INAV 完整配置保存／套用、固定來源、板子輸出腳位對照、受控 CMake／C 引用、電壓倍率、HEX／BIN 分段及版本核對測試。前端版本選單只有官方 9.1.0 名稱；公開 bundle 沒有板級實作全文。
+- 第一次 [37193860132](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37193860132) 已完成編譯與連結，套件驗證發現 GNU objcopy 對分段 Flash 的 BIN 補零與原先預期 FF 不同，發布被攔下，沒有建立 Release。修正驗證並換算 Betaflight 電壓倍率 210 → INAV 2100，再建立新的模板／profile／流程，沒有覆寫初次快照。
+- Workers 已部署（version 0a44c744-4465-4211-b9a2-5d8aedbdffa2），使用固定流程 tag platform-build-v2-13。Pages 前端公開 repo commit `5de0d70382782e9c009230f0e395303c9556f417`；[部署 37194511846](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Pages/actions/runs/37194511846) completed／success，正式入口 https://rex-taiphoon.github.io/Taiphoon_Firmware_Pages/ 。公開 repo 僅有 workflow、README、index、CSS／JS、logo。
+
+尚未實機刷寫、感測器／輸出／飛行驗收。板載 IIS2MDC、CAN／Ethernet 未接入；支持的外接指南針仍需實機核對。ADC 腳位及 IMU 方向採 ArduPilot 對應，來源差異見 [inav-morakot.md](inav-morakot.md)。本版原生 Flash 起點 0x08000000，DFU／SWD 刷寫會覆蓋 PX4／ArduPilot bootloader。Debug 選项未另做雲端編譯。瀏覽器視覺／互動驗收仍受既有網站封鎖限制，沒有以其他方式繞過。
+
+## 官方版本來源與 PX4 Bootloader（2026-10-04，先前驗證）
 
 52 項 Node 測試、TypeScript、Vite production build 與 API bundle 全部通過。測試包含版本白名單、來源／快照／流程核對、原生 Workers OAuth、私人版本模板、正式版預設、4.6.3 載具版本限制、歷史 Release 重新命名相容性及 ARM ELF／BIN Bootloader 的向量、位址、容量與映像一致性，並拒絕變更 Bootloader board ID／主韌體起點／Flash 邊界。React HTML 驗證版本選單不顯示配置 r1／r2／r3，僅保留原平台版本。
 

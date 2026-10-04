@@ -51,7 +51,7 @@ export function createHandler(env: Environment, transport: Fetch = fetch) {
       const userRepository = await new GitHub(session.userToken, transport).call(`/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}`);
       if (!userRepository.permissions?.push) throw new PlatformError(403, '已無平台 repository 寫入權限');
       if (url.pathname === '/session' && request.method === 'GET') return json({ actor: session.actor, repository: `${env.GITHUB_OWNER}/${env.GITHUB_REPO}`, targets, profiles });
-      const template = url.pathname.match(/^\/templates\/(ardupilot|px4|betaflight|am32)$/);
+      const template = url.pathname.match(/^\/templates\/(ardupilot|px4|betaflight|inav|am32)$/);
       if (request.method === 'GET' && template) {
         let specification;try{specification=targetFor(template[1],url.searchParams.get('profile') || undefined);}catch{throw new ValidationError('不支援的編譯版本設定');}
         return json({files:templateData[specification.templateKey || specification.id],profileId:specification.profileId,templateRevision:specification.templateRevision});

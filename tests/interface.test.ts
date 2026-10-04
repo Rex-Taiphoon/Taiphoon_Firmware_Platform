@@ -23,6 +23,8 @@ test('正式介面提供版本選擇，顯示乾淨版本名稱，不含 OSD 控
       const px4=renderToStaticMarkup(createElement(VersionSelect,{target:'px4',selected:defaultProfileId('px4'),disabled:false,onSelect:()=>{}}));
       assert.match(px4,/1\.17\.0/);assert.match(px4,/1\.18\.0-beta1/);assert.ok(!px4.includes('-6-g186ad6d691 ·'));assert.match(px4,/1\.18\.0-rc1/);assert.ok(!/>[^<]* · r[123]/.test(px4));
       const am32=renderToStaticMarkup(createElement(VersionSelect,{target:'am32',selected:defaultProfileId('am32'),disabled:false,onSelect:()=>{}}));assert.match(am32,/2\.20/);assert.ok(!am32.includes('eec483e880bc'));
+      const inav=renderToStaticMarkup(createElement(VersionSelect,{target:'inav',selected:defaultProfileId('inav'),disabled:false,onSelect:()=>{}}));
+      assert.match(inav,/>9\.1\.0<\/option>/);assert.ok(!/>[^<]*morakot-r[12]/i.test(inav));
     }finally{if(prior)Object.defineProperty(globalThis,'location',prior);else Reflect.deleteProperty(globalThis,'location');}
   }finally{rmSync(directory,{recursive:true,force:true});}
 });

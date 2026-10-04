@@ -11,6 +11,18 @@ import {applySettings,plan} from '../scripts/adapter.ts';
 import {verifyInav} from '../scripts/packages.ts';
 import {Platform} from '../server/platform.ts';
 import {FakeGitHub,env,ID} from './fixtures.ts';
+import {createHandler} from '../server/handler.ts';
+import {seal} from '../server/crypto.ts';
+
+test('Pages 可經私人 API 取得 INAV 完整版本模板，未登入與跨平台版本被拒絕',async()=>{
+  const handler=createHandler(env,async()=>Response.json({permissions:{push:true}})),profile=defaultProfileId('inav')!;
+  const session=seal({actor:'Rex-Taiphoon',userToken:'FAKE_TOKEN',expires:Date.now()+60000},env.SESSION_KEY);
+  const get=(version:string,token=session)=>handler(new Request(`${env.API_ORIGIN}/templates/inav?profile=${version}`,{headers:{Origin:env.PAGES_ORIGIN,Authorization:'Bearer '+token}}));
+  const response=await get(profile);assert.equal(response.status,200);
+  const data=await response.json();assert.equal(data.profileId,profile);assert.deepEqual(data.files,templateData['inav-9.1.0-r2']);
+  assert.equal((await get(profile,'invalid')).status,401);
+  assert.equal((await get(defaultProfileId('px4')!)).status,422);
+});
 
 test('INAV 配置快照保存完整目錄並套用編輯，不修改官方其他板子',async()=>{
   const profile=defaultProfileId('inav'),t=targetFor('inav',profile),c=configFor('inav',profile);
