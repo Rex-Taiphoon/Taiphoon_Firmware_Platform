@@ -20,7 +20,7 @@ React + TypeScript 的 Morakot 線上配置與雲端編譯平台。正式操作�
 | PX4 | boards/morakot/v6 完整文字目錄：24 檔，含 init、src、NuttX、CMake、linker | 版本選擇、主韌體／Bootloader、DDS、Release／Debug、LTO；OSD 由配置決定 |
 | Betaflight | configs/MORAKOT：config.h、config.c | GPS、蜂鳴器、Blackbox、遙測；OSD 由配置決定 |
 | AM32 | 共用 Inc/targets.h 中的 Morakot 定義 | G071／L431 CAN、序列遙測；G071 已雲端驗收 |
-| INAV | 等待 Morakot 定義 | 禁止提交 |
+| INAV | 官方 9.1.0 + Morakot 目錄：target.h、target.c、config.c、hardware_setup.c、CMakeLists.txt | Release／Debug；OSD 由配置決定，移植依據及限制見 [inav-morakot.md](docs/inav-morakot.md) |
 
 來源固定完整 SHA，詳見 [targets.md](docs/targets.md)。此 ArduPilot 來源的 Copter／Plane／Rover 為 4.6.3，Sub 為 **4.6.0-dev**，檔名與 Release 依載具標記正確版本。Betaflight 使用附件配置及同版官方固定來源，原 ZIP 的完整 source SHA 尚未確認，不能宣稱二進位重現原 ZIP。
 

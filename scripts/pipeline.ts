@@ -7,7 +7,7 @@ import { validateConfig, canonicalConfig, requestId, sha, verifyProvenance, rele
 import { targetFor } from '../shared/catalog.ts';
 import { plan, applySettings } from './adapter.ts';
 import { gitSafetyEnvironment } from './container.ts';
-import { verifyPx4, verifyArduPilot, verifyPx4Bootloader } from './packages.ts';
+import { verifyPx4, verifyArduPilot, verifyPx4Bootloader, verifyInav } from './packages.ts';
 import { checkSnapshot } from '../server/build-profile.ts';
 import { releaseDescription, configurationChanges } from './release-notes.ts';
 import {transferDigest} from './transfer.ts';
@@ -59,6 +59,12 @@ if (mode === 'prepare') {
     const version=header.match(/^#define VERSION_MAJOR\s+(\d+)/m)?.[1]+'.'+header.match(/^#define VERSION_MINOR\s+(\d+)/m)?.[1];
     if(version!==target.version)throw new Error('AM32 固定來源版本定義不符');
   }
+  if(c.target==='inav'){
+    const version=readFileSync(join(source,'CMakeLists.txt'),'utf8').match(/^project\(INAV VERSION ([0-9.]+)\)$/m)?.[1];
+    if(version!==target.version)throw new Error('INAV 固定來源版本不符');
+    run('git',['fetch','--depth=1','https://github.com/iNavFlight/inav.git',`refs/tags/${target.upstreamTag}:refs/tags/${target.upstreamTag}`],source);
+    if(run('git',['rev-parse',`refs/tags/${target.upstreamTag}`],source,true).trim()!==target.upstreamTagSha || run('git',['rev-parse',`refs/tags/${target.upstreamTag}^{commit}`],source,true).trim()!==target.sourceSha)throw new Error('INAV 官方 tag 與固定來源不一致');
+  }
   if (c.target === 'px4') {
     // The Morakot fork does not publish the upstream release tags. Fetch only the
     // verified upstream tag; the firmware source remains the pinned Morakot SHA.
@@ -93,15 +99,17 @@ if (mode === 'prepare') {
     const compilers = readdirSync(source, { recursive: true }).map(String).filter(p => basename(p) === 'arm-none-eabi-gcc');
     const compiler = compilers.length ? join(source, compilers[0]) : 'arm-none-eabi-gcc';
     toolchain = run(compiler, ['--version'], source, true).split('\n')[0];
+    if(c.target==='inav' && !toolchain.includes('13.2.1'))throw new Error('INAV 9.1.0 工具鏈版本不符');
   }
   mkdirSync('output', { recursive: true });
   const bootloader=c.target==='px4' && c.options.buildTarget==='bootloader';
-  const directory = c.target === 'ardupilot' ? join(source, 'build/Morakot/bin') : c.target === 'px4' ? join(source, bootloader?'build/morakot_v6_bootloader':'build/morakot_v6_default') : join(source, 'obj');
-  const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? [`ardu${c.options.vehicle}.apj`,`ardu${c.options.vehicle}.bin`].includes(name) : c.target === 'px4' ? (bootloader?['morakot_v6_bootloader.bin','morakot_v6_bootloader.elf'].includes(name):name === 'morakot_v6_default.px4') : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
+  const directory = c.target === 'ardupilot' ? join(source, 'build/Morakot/bin') : c.target === 'px4' ? join(source, bootloader?'build/morakot_v6_bootloader':'build/morakot_v6_default') : c.target==='inav'?join(source,'build'):join(source, 'obj');
+  const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? [`ardu${c.options.vehicle}.apj`,`ardu${c.options.vehicle}.bin`].includes(name) : c.target === 'px4' ? (bootloader?['morakot_v6_bootloader.bin','morakot_v6_bootloader.elf'].includes(name):name === 'morakot_v6_default.px4') : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : c.target==='inav'?['hex','bin'].some(ext=>name===`inav_${target.version}_MORAKOT.${ext}`):name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
   if (!files.length) throw new Error('編譯成功但找不到目標產物');
   if (bootloader) verifyPx4Bootloader(readFileSync(join(directory,'morakot_v6_bootloader.bin')),readFileSync(join(directory,'morakot_v6_bootloader.elf')));
   else if (c.target === 'px4') verifyPx4(readFileSync(join(directory,files[0])),s.sourceSha,target.version);
   if (c.target === 'ardupilot') verifyArduPilot(readFileSync(join(directory,`ardu${c.options.vehicle}.apj`)),readFileSync(join(directory,`ardu${c.options.vehicle}.bin`)),s.sourceSha);
+  if(c.target==='inav')verifyInav(readFileSync(join(directory,`inav_${target.version}_MORAKOT.hex`)),readFileSync(join(directory,`inav_${target.version}_MORAKOT.bin`)),s.sourceSha,target.version!);
   const buildRun=validateRunContext(JSON.parse(readFileSync('work/run.json','utf8')),expectedRun);
   const identity = releaseIdentity(s,Number(process.env.GITHUB_RUN_ID),Number(process.env.GITHUB_RUN_ATTEMPT),buildRun);
   const names = files.map(name => ({ original:name, renamed:`${identity.releaseTag}${name.slice(name.lastIndexOf('.'))}` }));
@@ -137,6 +145,11 @@ if (mode === 'prepare') {
     const apj=manifest.assets.find(a=>a.name.endsWith('.apj')),bin=manifest.assets.find(a=>a.name.endsWith('.bin'));
     if(!apj||!bin)throw new Error('ArduPilot 缺少 APJ／BIN');
     verifyArduPilot(readFileSync(join('output',apj.name)),readFileSync(join('output',bin.name)),s.sourceSha);
+  }
+  if(s.config.target==='inav'){
+    const hex=manifest.assets.find(a=>a.name.endsWith('.hex')),bin=manifest.assets.find(a=>a.name.endsWith('.bin'));
+    if(manifest.assets.length!==2 || !hex || !bin)throw new Error('INAV 必須包含 HEX 與 BIN');
+    verifyInav(readFileSync(join('output',hex.name)),readFileSync(join('output',bin.name)),s.sourceSha,targetFor('inav',s.config.profileId).version!);
   }
   const tag = releaseIdentity(s,actualRun.id,actualRun.run_attempt,actualRun).releaseTag;
   let existing: any; try { existing = await github.call(`/repos/${repository}/releases/tags/${tag}`); } catch (e) { if (!(e instanceof GitHubError && e.status === 404)) throw e; }

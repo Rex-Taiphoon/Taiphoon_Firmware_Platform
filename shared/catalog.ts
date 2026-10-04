@@ -29,7 +29,7 @@ export const targets: Target[] = [
     { key: 'blackbox', label: '包含 Blackbox', kind: 'boolean', default: true },
     { key: 'telemetry', label: '包含遙測', kind: 'boolean', default: true },
   ] },
-  { id: 'inav', name: 'INAV', board: 'MORAKOT · 待提供', description: '導航飛控 · 預留整合', repository: '', ref: '', sourceSha: '', definitionPath: '', available: false, note: '等待 repository 與 MORAKOT target 定義', fields: [] },
+  { id: 'inav', name: 'INAV', board: 'MORAKOT / STM32H743', description: '9.1.0 · Morakot', repository:'iNavFlight/inav', ref:'9.1.0', sourceSha:'e519b69b02e27c8bdc03b4a0889f1baaae211a54', definitionPath:'src/main/target/MORAKOT/target.h', version:'9.1.0', workflow:'inav.yml', available:true, note:'依 PX4／ArduPilot 配置移植；尚未實機驗收。板載 IIS2MDC、CAN／Ethernet 未接入；電流／電壓與 IMU 方向需實機核對', fields:[{key:'buildType',label:'編譯模式',kind:'choice',default:'Release',choices:[{value:'Release',label:'Release 最佳化'},{value:'Debug',label:'Debug 除錯'}]}] },
   { id: 'am32', name: 'AM32', board: 'Morakot 4-in-1 ESC', description: '60A · G071 / L431 CAN', repository: 'Rex-Taiphoon/AM32', ref: 'Morakot_4in1_ESC-dev', sourceSha: 'eec483e880bc9ac2429dafc71368f044dc018892', definitionPath: 'Inc/targets.h', available: true, note: 'G071 已通過雲端編譯與 Release 驗證；L431 CAN 待驗收', fields: [
     { key: 'variant', label: 'ESC 硬體版本', kind: 'choice', default: 'G071', choices: [{ value: 'G071', label: 'MORAKOT 60A · G071' }, { value: 'L431_CAN', label: 'MORAKOT 60A · L431 CAN' }] },
     { key: 'serialTelemetry', label: '包含序列遙測', kind: 'boolean', default: true },
@@ -37,7 +37,7 @@ export const targets: Target[] = [
 ];
 for (const target of targets) if (boardFiles[target.id]) target.editableFiles = boardFiles[target.id];
 // Legacy entries remain unchanged: schema-1 snapshots and Release tags depend on them.
-export const profiles: Target[] = targets.filter(t=>t.available).map(t=>({
+export const profiles: Target[] = targets.filter(t=>t.available && t.id!=='inav').map(t=>({
   ...t, profileId: `${t.id}-${t.version || 'dev-'+t.sourceSha.slice(0,12)}-morakot-r1`,
   templateKey: t.id, templateRevision: templateRevisions[t.id], adapterRevision: 'morakot-v2-r1',
   fields: t.fields.filter(f=>!['osd','osdType2'].includes(f.key)),
@@ -88,6 +88,8 @@ profiles.push({...profiles.find(t=>t.id==='am32' && t.available)!,...{"profileId
 profiles.find(t=>t.profileId==='am32-2.20-morakot-r1')!.available=false;
 const old463=profiles.find(t=>t.profileId==='ardupilot-4.6.3-morakot-r1')!;old463.available=false;
 profiles.push({...old463,available:true,profileId:'ardupilot-4.6.3-morakot',repository:'ArduPilot/ardupilot',ref:'Copter-4.6.3',upstreamTag:'Copter-4.6.3',upstreamTagSha:old463.sourceSha,vehicleVersions:{copter:'4.6.3',plane:'4.6.3',rover:'4.6.3'},fields:old463.fields.map(f=>f.key==='vehicle'?{...f,choices:f.choices!.filter(c=>c.value!=='sub')}:f),note:'官方 4.6.3 固定來源，加上 Morakot 配置；此版本支援 Copter／Plane／Rover，Sub 請選 4.7.0 或 4.7.1'});
+const inav=targets.find(t=>t.id==='inav')!;
+profiles.push({...inav,profileId:'inav-9.1.0-morakot',templateKey:'inav-9.1.0',templateRevision:templateRevisions['inav-9.1.0'],editableFiles:boardFiles['inav-9.1.0'],adapterRevision:'morakot-inav-v1',upstreamTag:'9.1.0',upstreamTagSha:inav.sourceSha});
 export function displayVersion(target: Target,variant?:string): string {
   return (target.vehicleVersions?.[variant || ''] || target.version || 'Development').replace(/-\d+-g[0-9a-f]+$/,'');
 }

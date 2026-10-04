@@ -41,6 +41,7 @@ function keys(value: Record<string, unknown>, expected: string[]) {
 }
 export function validateConfig(value: unknown): Config {
   const c = object(value); keys(c, ['schemaVersion', 'target', 'options', ...(c.schemaVersion===2 ? ['profileId'] : []), ...(c.files !== undefined ? ['files'] : [])]);
+  if(c.target==='inav' && c.schemaVersion!==2)throw new ValidationError('INAV 必須選擇已登錄的韌體版本');
   if (![1,2].includes(Number(c.schemaVersion)) || typeof c.schemaVersion !== 'number' || !targets.some(t=>t.id===c.target) || (c.schemaVersion===2 && typeof c.profileId!=='string')) throw new ValidationError('不支援的設定版本或編譯目標');
   let target;try{target=targetFor(c.target,c.schemaVersion===2 ? c.profileId as string : undefined);}catch{throw new ValidationError('不支援的編譯版本設定');}
   const o = object(c.options); keys(o, target.fields.map(f => f.key));

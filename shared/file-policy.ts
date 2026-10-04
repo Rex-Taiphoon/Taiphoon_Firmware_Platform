@@ -71,8 +71,14 @@ export function validateFiles(target: FirmwareId, value: unknown, profileId?: st
       for (const line of text.split('\n').map(l => l.split('#')[0].trim()).filter(Boolean)) if (/^(?:include|env|ROMFS|ROMFS_WILDCARD)\b/.test(line) || /[$`;{}]|\.\./.test(line)) throw new Error('hwdef 不允許引用其他檔案、執行指令或修改編譯環境');
       if (path.startsWith('hwdef') && (!/^MCU STM32H7xx STM32H743xx$/m.test(text) || !/^APJ_BOARD_ID (?:AP_HW_Morakot|1210)$/m.test(text))) throw new Error('必須保留 Morakot MCU 與 board ID');
       if (path === 'defaults.parm') for (const line of text.split('\n').map(l => l.split('#')[0].trim()).filter(Boolean)) if (!/^[A-Z][A-Z0-9_]+\s+-?\d+(?:\.\d+)?$/.test(line)) throw new Error('預設參數必須使用名稱與數值');
+    } else if(target==='inav' && path==='CMakeLists.txt') {
+      if(withoutComments(text).replace(/#[^\n]*/g,'').trim()!=='target_stm32h743xi(MORAKOT HSE_MHZ 8)')throw new Error('必須保留 MORAKOT STM32H743、8 MHz 晶振與受控建置入口');
     } else if (/\.(?:c|cpp|h)$/.test(path)) {
       validateC(templateKey,text);
+      if(target==='inav' && path==='target.h'){
+        const code=withoutComments(text);
+        if(!/^#define TARGET_BOARD_IDENTIFIER "MKOT"$/m.test(code)||!/^#define USBD_PRODUCT_STRING "MORAKOT"$/m.test(code))throw new Error('必須保留 MORAKOT 的 INAV 硬體識別');
+      }
       if(target==='px4'){
         const code=withoutComments(text),protectedNames=['BOARD_TYPE','APP_LOAD_ADDRESS','BOARD_FLASH_SECTORS','BOARD_FLASH_SIZE'];
         const definitions=[...code.matchAll(/^\s*#\s*(define|undef)\s+(BOARD_TYPE|APP_LOAD_ADDRESS|BOARD_FLASH_SECTORS|BOARD_FLASH_SIZE)\b([^\n]*)$/gm)];

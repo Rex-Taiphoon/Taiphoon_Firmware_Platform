@@ -1,0 +1,124 @@
+name: INAV Morakot build
+run-name: Firmware ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: Saved request UUID
+        required: true
+        type: string
+      config_sha:
+        description: Immutable configuration commit SHA
+        required: true
+        type: string
+      publish_release:
+        description: Publish verified outputs to a Release (leave disabled for compilation validation)
+        required: false
+        type: boolean
+        default: false
+permissions: {}
+concurrency:
+  group: firmware-${{ inputs.request_id }}
+  cancel-in-progress: false
+env:
+  EXPECTED_TARGET: inav
+  REQUEST_ID: ${{ inputs.request_id }}
+  CONFIG_SHA: ${{ inputs.config_sha }}
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      source_repository: ${{ steps.prepare.outputs.source_repository }}
+      source_sha: ${{ steps.prepare.outputs.source_sha }}
+      definition_repository: ${{ steps.prepare.outputs.definition_repository }}
+      definition_sha: ${{ steps.prepare.outputs.definition_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.19.0
+      - id: prepare
+        run: node scripts/pipeline.ts prepare
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+  build:
+    name: build
+    needs: validate
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.19.0
+      - name: Read immutable request
+        run: node scripts/pipeline.ts prepare
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: ${{ needs.validate.outputs.source_repository }}
+          ref: ${{ needs.validate.outputs.source_sha }}
+          path: work/source
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        if: needs.validate.outputs.definition_repository != needs.validate.outputs.source_repository
+        with:
+          repository: ${{ needs.validate.outputs.definition_repository }}
+          ref: ${{ needs.validate.outputs.definition_sha }}
+          path: work/definition
+          persist-credentials: false
+      - name: Install INAV build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y ninja-build ruby ruby-dev
+      - run: node scripts/pipeline.ts build
+        id: compile
+      - name: Transfer verified outputs
+        if: inputs.publish_release
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: output
+          key: firmware-transfer-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+    outputs:
+      transfer_hash: ${{ steps.compile.outputs.transfer_hash }}
+  publish:
+    name: publish
+    if: inputs.publish_release
+    needs:
+      - validate
+      - build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.19.0
+      - name: Restore this run only
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: output
+          key: firmware-transfer-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          fail-on-cache-miss: true
+      - run: node scripts/pipeline.ts publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PUBLISH_RELEASE: ${{ inputs.publish_release }}
+          TRANSFER_HASH: ${{ needs.build.outputs.transfer_hash }}

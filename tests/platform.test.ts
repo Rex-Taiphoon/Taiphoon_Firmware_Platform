@@ -14,7 +14,7 @@ test('保存 → 觸發 → 發布 → 下載：結果對應同一份設定與 r
   gh.jobs = [{ name: 'publish', status: 'in_progress' }]; assert.equal((await p.status(ID)).phase, 'publishing');
   gh.publish(saved); const status = await p.status(ID);
   assert.equal(status.phase, 'success'); assert.equal(status.provenance?.configSha, saved.configSha);
-  assert.match(status.assets![0].url!, /releases\/download\/ardupilot-copter-4.6.3-20261003-71-1\/arducopter.apj$/);
+  assert.ok(status.assets![0].url!.endsWith(`/releases/download/ardupilot-copter-4.6.3-${saved.createdAt.slice(0,10).replaceAll('-','')}-71-1/arducopter.apj`));
   assert.equal(gh.dispatchCount, 1);
 });
 test('重複保存與同時觸發不會覆寫設定或重複 dispatch', async () => {
@@ -64,11 +64,11 @@ test('失敗、取消、draft 及未發布的工作無下載', async () => {
   gh.run.conclusion = 'success'; assert.equal((await p.status(ID)).phase, 'failed');
   gh.publish(saved); gh.release.draft = true; assert.equal((await p.status(ID)).phase, 'failed');
 });
-test('使用者不能讀取其他人的工作，也不能編譯未接入的 INAV', async () => {
+test('使用者不能讀取其他人的工作，INAV 必須指定已登錄版本', async () => {
   const gh = new FakeGitHub(), p = new Platform(env, gh, 'Rex-Taiphoon');
   await p.save(ID, configFor('ardupilot'));
   await assert.rejects(new Platform(env, gh, 'other-user').saved(ID), /其他使用者/);
-  await assert.rejects(p.save(ID2, configFor('inav')), /等待/);
+  await assert.rejects(p.save(ID2, configFor('inav')), /韌體版本/);
 });
 test('快照來源或已觸發的設定被修改後不允許再次 dispatch', async () => {
   const gh = new FakeGitHub(), p = new Platform(env, gh, 'Rex-Taiphoon');

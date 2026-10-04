@@ -20,6 +20,7 @@ export function releaseDescription(saved:SavedRequest,manifest:Provenance,reposi
   const format=(v:string|boolean)=>typeof v==='boolean'?(v?'啟用':'停用'):v;
   const lines=[`${t.name} ${manifest.displayFirmwareVersion || manifest.firmwareVersion} · Morakot${manifest.variant && manifest.variant!=='Morakot'?' · '+manifest.variant:''} · ${manifest.buildDate}（台灣時間）`,
     ...(manifest.variant==='bootloader'?['Bootloader：BIN／ELF，Flash 位址 0x08000000；使用 SWD／DFU，主韌體更新入口不適用。']:[]), '', '修改摘要（相對於此版本的 Morakot 預設配置）：'];
+  if(saved.config.target==='inav')lines.splice(1,0,'驗證範圍：雲端編譯及套件檢查，尚未實機驗收。原生 INAV HEX／BIN 起點 0x08000000；透過 STM32 DFU／SWD 安裝會覆蓋 PX4／ArduPilot bootloader。板載 IIS2MDC、CAN／Ethernet 未接入。');
   for(const o of changes.options)lines.push(`- ${safe(o.label)}：${safe(format(o.before))} → ${safe(format(o.after))}`);
   let excerptBudget=3500;
   for(const f of changes.files){

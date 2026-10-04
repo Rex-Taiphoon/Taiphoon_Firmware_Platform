@@ -11,7 +11,10 @@ export function plan(value: unknown, definitionDir: string): Command[] {
     case 'px4': return [{ executable: 'bash', args: ['Tools/setup/ubuntu.sh', '--no-sim-tools'] }, { executable: 'make', args: ['-j2', c.options.buildTarget==='bootloader'?'morakot_v6_bootloader':'morakot_v6_default', `PX4_CMAKE_BUILD_TYPE=${c.options.buildType === 'Release' ? 'MinSizeRel' : 'Debug'}`] }];
     case 'betaflight': return [{ executable: 'make', args: ['arm_sdk_install', `BETAFLIGHT_CONFIG=${definitionDir}`] }, { executable: 'make', args: ['-j2', 'fwo', 'CONFIG=MORAKOT', `BETAFLIGHT_CONFIG=${definitionDir}`] }];
     case 'am32': return [{ executable: 'make', args: ['arm_sdk_install'] }, { executable: 'make', args: ['-j2', `MORAKOT_4IN1_ESC_60A_${c.options.variant}`] }];
-    case 'inav': throw new Error('INAV MORAKOT 定義尚未提供，不能編譯');
+    case 'inav': return [
+      {executable:'cmake',args:['-S','.', '-B','build','-G','Ninja',`-DCMAKE_BUILD_TYPE=${c.options.buildType}`, '-DWARNINGS_AS_ERRORS=ON']},
+      {executable:'cmake',args:['--build','build','--target','MORAKOT','MORAKOT.bin','--parallel','2']},
+    ];
   }
 }
 export function setDefine(text: string, name: string, enabled: boolean): string {
@@ -88,5 +91,9 @@ export function applySettings(config: Config, source: string, definition: string
     writeFileSync(post,text);
   } else if (c.target === 'am32') {
     const path = join(source, 'Inc/targets.h'); writeFileSync(path, amendAm32(c.files?.['Inc/targets.h'] ?? readFileSync(path, 'utf8'), String(c.options.variant), Boolean(c.options.serialTelemetry)));
-  } else throw new Error('INAV 尚未接入');
+  } else if(c.target==='inav') {
+    const dir=join(source,'src/main/target/MORAKOT');
+    cpSync(template,dir,{recursive:true});
+    for(const [name,text] of Object.entries(c.files ?? {}))writeFileSync(join(dir,name),text);
+  }
 }

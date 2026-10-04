@@ -17,7 +17,7 @@ test('每個已接入目標使用固定命令與實際 MORAKOT 目標', () => {
   assert.ok(plan(configFor('px4'), '/defs')[1].args.includes('morakot_v6_default'));
   assert.ok(plan(configFor('betaflight'), '/defs')[1].args.includes('CONFIG=MORAKOT'));
   assert.ok(plan(configFor('am32'), '/defs')[1].args.includes('MORAKOT_4IN1_ESC_60A_G071'));
-  assert.throws(() => plan(configFor('inav'), '/defs'), /尚未提供/);
+  assert.throws(() => plan(configFor('inav'), '/defs'), /韌體版本/);
 });
 test('設定修改保留 C 前處理指令邊界，且不修改其他 ESC 硬體', () => {
   assert.equal(setDefine('#ifndef USE_GPS\n\n#define USE_GPS\n#endif\n', 'USE_GPS', false), '#ifndef USE_GPS\n\n// platform: USE_GPS disabled\n#endif\n');

@@ -26,7 +26,7 @@ test('只編譯模式拒絕直接執行 Release 發布脚本，不呼叫 GitHub'
   assert.match(result.stderr, /未確認發布 Release/);
 });
 test('cache 僅轉交同次 run／attempt／SHA，沒有 fallback，發布比對可信 job 摘要',()=>{
-  for(const file of ['firmware','ardupilot','px4','betaflight']){
+  for(const file of ['firmware','ardupilot','px4','betaflight','inav']){
     const w=parse(readFileSync(`.github/workflows/${file}.yml`,'utf8'));
     const save=w.jobs.build.steps.find((s:any)=>s.uses?.startsWith('actions/cache/save'));
     const restore=w.jobs.publish.steps.find((s:any)=>s.uses?.startsWith('actions/cache/restore'));

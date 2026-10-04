@@ -1,4 +1,31 @@
 import { inflateSync } from 'node:zlib';
+// INAV's native H743 image uses the MCU flash base, not the PX4/AP application offset.
+export function verifyInav(hex:Buffer,binary:Buffer,sourceSha:string,version:string) {
+  const base=0x08000000,max=2097152;
+  if(binary.length<64 || binary.length>max || hex.length>max*3)throw new Error('INAV 映像大小不符');
+  let upper=0,eof=false,count=0,last=0;
+  const seen=new Uint8Array(binary.length),image=Buffer.alloc(binary.length,0xff);
+  for(const line of hex.toString('ascii').trim().split(/\r?\n/)){
+    if(eof || !/^:(?:[0-9a-f]{2})+$/i.test(line))throw new Error('INAV HEX 結構不符');
+    const b=Buffer.from(line.slice(1),'hex'),length=b[0],address=b.readUInt16BE(1),type=b[3];
+    if(b.length!==length+5 || [...b].reduce((a,v)=>a+v,0)%256)throw new Error('INAV HEX checksum 不符');
+    if(type===0){
+      const offset=upper+address-base;
+      if(!length || offset<0 || offset+length>binary.length)throw new Error('INAV HEX Flash 範圍不符');
+      for(let i=0;i<length;i++){if(seen[offset+i])throw new Error('INAV HEX 位址重複');seen[offset+i]=1;}
+      b.copy(image,offset,4,4+length);count+=length;last=Math.max(last,offset+length);
+    }else if(type===1){if(length || address)throw new Error('INAV HEX EOF 不符');eof=true;}
+    else if(type===2 || type===4){if(length!==2 || address)throw new Error('INAV HEX 位址紀錄不符');upper=b.readUInt16BE(4)*(type===4?65536:16);}
+    else if(type===3 || type===5){if(length!==4 || address)throw new Error('INAV HEX 入口紀錄不符');}
+    else throw new Error('INAV HEX 類型不符');
+  }
+  if(!eof || !count || !seen[0] || last!==binary.length || !image.equals(binary))throw new Error('INAV HEX／BIN 內容不一致');
+  const stack=binary.readUInt32LE(0),reset=binary.readUInt32LE(4);
+  const ram=[[0x20000000,0x20020000],[0x24000000,0x24080000],[0x30000000,0x30048000],[0x38000000,0x38010000]];
+  if(stack%8 || !ram.some(([a,b])=>stack>a&&stack<=b) || !(reset&1) || reset-1<base || reset-1>=base+binary.length)throw new Error('INAV ARM 向量或 Flash 起點不符');
+  for(const identity of ['INAV','MORAKOT',version,sourceSha.slice(0,8)])if(!binary.includes(Buffer.from(identity)))throw new Error('INAV 映像來源、版本或板名不符');
+  return {imageSize:binary.length,maxSize:max,flashAddress:'0x08000000',board:'MORAKOT',version};
+}
 // Morakot H743: bootloader owns the first 128 KiB at 0x08000000.
 export function verifyPx4Bootloader(binary:Buffer,elf:Buffer) {
   if(binary.length<8 || binary.length>131072 || elf.length<52 || elf.subarray(0,7).toString('hex')!=='7f454c46010101' || elf.readUInt16LE(16)!==2 || elf.readUInt16LE(18)!==40)throw new Error('PX4 Bootloader 格式或 128 KiB 容量不符');
