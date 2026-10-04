@@ -1,6 +1,6 @@
 # Morakot INAV 9.1.0 移植
 
-基底是官方 [iNavFlight/inav 9.1.0](https://github.com/iNavFlight/inav/releases/tag/9.1.0)，固定 commit `e519b69b02e27c8bdc03b4a0889f1baaae211a54`。只新增 `src/main/target/MORAKOT/` 板級目錄，不修改 INAV 感測器驅動；不是 INAV 官方收錄板子。完整預設模板存於 `templates/inav-9.1.0/`，包含 CMakeLists.txt、target.h、target.c、config.c、hardware_setup.c，Pages 可逐檔編輯。各次保存的完整檔案位於 requests 快照，編譯與 Release 使用同一快照。
+基底是官方 [iNavFlight/inav 9.1.0](https://github.com/iNavFlight/inav/releases/tag/9.1.0)，固定 commit `e519b69b02e27c8bdc03b4a0889f1baaae211a54`。只新增 `src/main/target/MORAKOT/` 板級目錄，不修改 INAV 感測器驅動；不是 INAV 官方收錄板子。完整預設模板存於 `templates/inav-9.1.0-r2/`，包含 CMakeLists.txt、target.h、target.c、config.c、hardware_setup.c，Pages 可逐檔編輯。各次保存的完整檔案位於 requests 快照，編譯與 Release 使用同一快照。
 
 ## 腳位依據
 
@@ -16,7 +16,7 @@
 | UART | UART1 PB14/15、UART2 PD5/6、UART3 PD8/9、UART5 PB6/5、UART6 PC6/7、UART7 PE8/7、UART8 PE1/0 | 兩平台一致；7 個 UART + USB，未虛構 UART4 |
 | 預設 RX／GPS | CRSF UART8、GPS UART5 115200 | 接收器協定可改 target.h；UART3 的 SBUS 腳位保留，未預設成同時啟用兩個 RX。GPS baud 需符合實際設備 |
 | SDMMC1 | PC8–12、PD2，4-bit SD 卡 Blackbox | 兩平台一致；INAV SDIODEV_1 固定腳位 |
-| 電壓／電流 | ADC1 PC0 電壓、PC2 電流 | 採 ArduPilot 與 Betaflight 一致的標示；PX4 標示反向。初始 scale=210／100 取附件 Betaflight，需用電表及實際電流校正 |
+| 電壓／電流 | ADC1 PC0 電壓、PC2 電流 | 採 ArduPilot 與 Betaflight 一致的標示；PX4 標示反向。初始 INAV scale=2100／100（Betaflight 電壓 210 換算為 INAV 2100），需用電表及實際電流校正 |
 | 輸出 S1–S9 | PE14、PE13、PE11、PA8、PA0、PB3、PB10、PA3、PB0 | 兩平台 PWM 順序一致，TIM1/TIM2/TIM3；使用 INAV output auto、DSHOT，不預設載具 mixer |
 | OSD／蜂鳴器 | SPI4 PE2/5/6、CS PE4；蜂鳴器 PD15 | ArduPilot 與 PX4 腳位；INAV MAX7456 相容驅動，蜂鳴器採 GPIO，未沿用 PX4 不一致的 TIM17 註解 |
 | 電源／相機 | PB2 感測器電源 high；PE3 VTX 電源 high；PC13 camera low | PX4 board_config.h 與初始化預設；於感測器偵測前設定 |

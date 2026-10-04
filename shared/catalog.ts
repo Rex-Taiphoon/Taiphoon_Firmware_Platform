@@ -90,6 +90,8 @@ const old463=profiles.find(t=>t.profileId==='ardupilot-4.6.3-morakot-r1')!;old46
 profiles.push({...old463,available:true,profileId:'ardupilot-4.6.3-morakot',repository:'ArduPilot/ardupilot',ref:'Copter-4.6.3',upstreamTag:'Copter-4.6.3',upstreamTagSha:old463.sourceSha,vehicleVersions:{copter:'4.6.3',plane:'4.6.3',rover:'4.6.3'},fields:old463.fields.map(f=>f.key==='vehicle'?{...f,choices:f.choices!.filter(c=>c.value!=='sub')}:f),note:'官方 4.6.3 固定來源，加上 Morakot 配置；此版本支援 Copter／Plane／Rover，Sub 請選 4.7.0 或 4.7.1'});
 const inav=targets.find(t=>t.id==='inav')!;
 profiles.push({...inav,profileId:'inav-9.1.0-morakot',templateKey:'inav-9.1.0',templateRevision:templateRevisions['inav-9.1.0'],editableFiles:boardFiles['inav-9.1.0'],adapterRevision:'morakot-inav-v1',upstreamTag:'9.1.0',upstreamTagSha:inav.sourceSha});
+const initialInav=profiles.find(t=>t.profileId==='inav-9.1.0-morakot')!;initialInav.available=false;
+profiles.push({...initialInav,available:true,profileId:'inav-9.1.0-morakot-r2',templateKey:'inav-9.1.0-r2',templateRevision:templateRevisions['inav-9.1.0-r2'],editableFiles:boardFiles['inav-9.1.0-r2'],adapterRevision:'morakot-inav-v2'});
 export function displayVersion(target: Target,variant?:string): string {
   return (target.vehicleVersions?.[variant || ''] || target.version || 'Development').replace(/-\d+-g[0-9a-f]+$/,'');
 }

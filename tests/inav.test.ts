@@ -29,7 +29,7 @@ test('INAV 配置快照保存完整目錄並套用編輯，不修改官方其他
 });
 
 test('INAV 板級設定拒絕 CMake 指令、外部引用、錯誤 MCU／板名與任意版本',()=>{
-  const c=configFor('inav',defaultProfileId('inav')),files=templateData['inav-9.1.0'];
+  const c=configFor('inav',defaultProfileId('inav')),files=templateData['inav-9.1.0-r2'];
   for(const [path,text]of [
     ['CMakeLists.txt',files['CMakeLists.txt']+'execute_process(COMMAND bash -c id)'],
     ['CMakeLists.txt','target_stm32f405xg(MORAKOT HSE_MHZ 8)'],
@@ -43,12 +43,13 @@ test('INAV 板級設定拒絕 CMake 指令、外部引用、錯誤 MCU／板名�
 });
 
 test('INAV nine outputs agree with ArduPilot/PX4 pins, ADC selection and sensor power are explicit',()=>{
-  const f=templateData['inav-9.1.0'];
+  const f=templateData['inav-9.1.0-r2'];
   const pins=['PE14','PE13','PE11','PA8','PA0','PB3','PB10','PA3','PB0'];
   const found=[...f['target.c'].matchAll(/DEF_TIM\(TIM\d, CH\d, (P[A-E]\d+),/g)].map(m=>m[1]);assert.deepEqual(found,pins);
   for(const pin of pins){assert.match(templateData['ardupilot-4.7.1']['hwdef.dat'],new RegExp('^'+pin+'\\s+TIM','m'));assert.ok(templateData['px4-1.18-rc1']['src/timer_config.cpp'].includes('GPIO::Port'+pin[1]+', GPIO::Pin'+pin.slice(2)));}
   assert.match(f['target.h'],/#define ADC_CHANNEL_1_PIN PC0/);assert.match(f['target.h'],/#define ADC_CHANNEL_2_PIN PC2/);
   assert.match(f['hardware_setup.c'],/IOHi\(DEFIO_IO\(PB2\)\)/);assert.match(f['target.h'],/CW90_DEG_FLIP/);
+  assert.match(f['config.c'],/voltage.scale = 2100;/);
   const w=parse(readFileSync('.github/workflows/inav.yml','utf8'));assert.equal(w.env.EXPECTED_TARGET,'inav');assert.equal(w.jobs.build.permissions.contents,'read');assert.equal(w.jobs.publish.permissions.contents,'write');
 });
 
@@ -63,4 +64,9 @@ test('INAV 套件驗證 HEX／BIN、Flash 起點、ARM 向量及內嵌版本與�
   assert.throws(()=>verifyInav(Buffer.from(asHex(b)),b,sha,'10.0.0'));
   const wrong=Buffer.from(b);wrong.writeUInt32LE(0x08020001,4);assert.throws(()=>verifyInav(Buffer.from(asHex(wrong)),wrong,sha,'9.1.0'));
   const edited=Buffer.from(b);edited[127]=0;assert.throws(()=>verifyInav(Buffer.from(asHex(b)),edited,sha,'9.1.0'));
+  // INAV H743 has a reserved configuration sector: HEX omits it, objcopy BIN pads it with zero.
+  const sparse=Buffer.alloc(288);b.copy(sparse);b.subarray(8).copy(sparse,168);
+  const sparseHex=[record(4,0,Buffer.from([8,0])),record(0,0,sparse.subarray(0,128)),record(0,168,sparse.subarray(168)),record(1,0,Buffer.alloc(0))].join('\n');
+  assert.equal(verifyInav(Buffer.from(sparseHex),sparse,sha,'9.1.0').imageSize,288);
+  sparse[160]=1;assert.throws(()=>verifyInav(Buffer.from(sparseHex),sparse,sha,'9.1.0'));
 });

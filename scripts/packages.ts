@@ -4,7 +4,8 @@ export function verifyInav(hex:Buffer,binary:Buffer,sourceSha:string,version:str
   const base=0x08000000,max=2097152;
   if(binary.length<64 || binary.length>max || hex.length>max*3)throw new Error('INAV 映像大小不符');
   let upper=0,eof=false,count=0,last=0;
-  const seen=new Uint8Array(binary.length),image=Buffer.alloc(binary.length,0xff);
+  // GNU objcopy -Obinary fills holes (including the reserved config sector) with zero.
+  const seen=new Uint8Array(binary.length),image=Buffer.alloc(binary.length);
   for(const line of hex.toString('ascii').trim().split(/\r?\n/)){
     if(eof || !/^:(?:[0-9a-f]{2})+$/i.test(line))throw new Error('INAV HEX 結構不符');
     const b=Buffer.from(line.slice(1),'hex'),length=b[0],address=b.readUInt16BE(1),type=b[3];

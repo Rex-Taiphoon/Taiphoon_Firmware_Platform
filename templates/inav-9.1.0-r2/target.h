@@ -1,0 +1,101 @@
+/* Taiphoon Morakot board overlay for INAV 9.1.0. SPDX-License-Identifier: GPL-3.0-or-later */
+#pragma once
+
+#define TARGET_BOARD_IDENTIFIER "MKOT"
+#define USBD_PRODUCT_STRING "MORAKOT"
+#define USE_TARGET_CONFIG
+#define USE_HARDWARE_PREBOOT_SETUP
+
+// All three LED pins are shared by the ArduPilot/PX4 definitions; colour labels differ.
+#define LED0 PD10
+#define LED1 PD12
+#define LED2 PD13
+#define BEEPER PD15
+
+#define USE_SPI
+#define USE_SPI_DEVICE_1
+#define SPI1_SCK_PIN PA5
+#define SPI1_MISO_PIN PA6
+#define SPI1_MOSI_PIN PD7
+#define USE_IMU_ICM45686
+#define USE_TARGET_IMU_HARDWARE_DESCRIPTORS
+#define ICM45686_SPI_BUS BUS_SPI1
+#define ICM45686_CS_PIN PA15
+#define ICM45686_EXTI_PIN PD11
+// ArduPilot ROTATION_ROLL_180_YAW_90; do not also rotate the entire board.
+#define IMU_ICM45686_ALIGN CW90_DEG_FLIP
+
+#define USE_SPI_DEVICE_4
+#define SPI4_SCK_PIN PE2
+#define SPI4_MISO_PIN PE5
+#define SPI4_MOSI_PIN PE6
+#define USE_MAX7456
+#define MAX7456_SPI_BUS BUS_SPI4
+#define MAX7456_CS_PIN PE4
+
+#define USE_I2C
+#define USE_I2C_DEVICE_1
+#define I2C1_SCL PB8
+#define I2C1_SDA PB9
+#define USE_BARO
+#define BARO_I2C_BUS BUS_I2C1
+#define USE_BARO_BMP388
+// INAV 9.1.0 has no IIS2MDC driver. This bus supports supported external compasses.
+#define USE_MAG
+#define MAG_I2C_BUS BUS_I2C1
+#define USE_MAG_ALL
+#define TEMPERATURE_I2C_BUS BUS_I2C1
+#define PITOT_I2C_BUS BUS_I2C1
+
+#define USE_VCP
+#define USE_UART1
+#define UART1_TX_PIN PB14
+#define UART1_RX_PIN PB15
+#define USE_UART2
+#define UART2_TX_PIN PD5
+#define UART2_RX_PIN PD6
+#define USE_UART3
+#define UART3_TX_PIN PD8
+#define UART3_RX_PIN PD9
+#define USE_UART5
+#define UART5_TX_PIN PB6
+#define UART5_RX_PIN PB5
+#define USE_UART6
+#define UART6_TX_PIN PC6
+#define UART6_RX_PIN PC7
+#define USE_UART7
+#define UART7_TX_PIN PE8
+#define UART7_RX_PIN PE7
+#define USE_UART8
+#define UART8_TX_PIN PE1
+#define UART8_RX_PIN PE0
+#define SERIAL_PORT_COUNT 8
+#define DEFAULT_RX_TYPE RX_TYPE_SERIAL
+#define SERIALRX_PROVIDER SERIALRX_CRSF
+#define SERIALRX_UART SERIAL_PORT_USART8
+
+#define USE_SDCARD
+#define USE_SDCARD_SDIO
+#define SDCARD_SDIO_DEVICE SDIODEV_1
+#define SDCARD_SDIO_4BIT
+#define ENABLE_BLACKBOX_LOGGING_ON_SDCARD_BY_DEFAULT
+
+#define USE_ADC
+#define ADC_INSTANCE ADC1
+// ArduPilot and Betaflight agree: PC0 voltage, PC2 current (PX4 labels are reversed).
+#define ADC_CHANNEL_1_PIN PC0
+#define ADC_CHANNEL_2_PIN PC2
+#define VBAT_ADC_CHANNEL ADC_CHN_1
+#define CURRENT_METER_ADC_CHANNEL ADC_CHN_2
+#define CURRENT_METER_SCALE 100
+
+#define DEFAULT_FEATURES (FEATURE_OSD | FEATURE_TELEMETRY | FEATURE_CURRENT_METER | FEATURE_VBAT | FEATURE_TX_PROF_SEL | FEATURE_BLACKBOX | FEATURE_GPS)
+#define USE_SERIAL_4WAY_BLHELI_INTERFACE
+#define USE_DSHOT
+#define USE_ESC_SENSOR
+#define MAX_PWM_OUTPUT_PORTS 9
+#define TARGET_IO_PORTA (0xffff & ~(BIT(13) | BIT(14)))
+#define TARGET_IO_PORTB 0xffff
+#define TARGET_IO_PORTC 0xffff
+#define TARGET_IO_PORTD 0xffff
+#define TARGET_IO_PORTE 0xffff

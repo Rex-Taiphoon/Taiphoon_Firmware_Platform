@@ -9,7 +9,7 @@
 | PX4 1.17.0 | PX4/PX4-Autopilot@d6f12ad1c4f70ad3230afd7d86e971421e02fef4 | 官方 v1.17.0 固定來源，templates/px4-1.17；同一經驗證的容器 digest與 make 入口 |
 | Betaflight | betaflight/betaflight@1b53ace8356cc43f3c8359ed2357255ba789ca73 | 官方 Arm GNU 13.3.Rel1，make arm_sdk_install + fwo CONFIG=MORAKOT |
 | AM32 | Rex-Taiphoon/AM32@eec483e880bc9ac2429dafc71368f044dc018892 | 原 Makefile SDK 安裝；MORAKOT_4IN1_ESC_60A_G071／L431_CAN；G071 已通過 Actions 與 Release 校驗 |
-| INAV 9.1.0 | iNavFlight/inav@e519b69b02e27c8bdc03b4a0889f1baaae211a54 | 官方 CMake + ARM GNU 13.2.1；MORAKOT／MORAKOT.bin，templates/inav-9.1.0，見 [移植依據](inav-morakot.md) |
+| INAV 9.1.0 | iNavFlight/inav@e519b69b02e27c8bdc03b4a0889f1baaae211a54 | 官方 CMake + ARM GNU 13.2.1；MORAKOT／MORAKOT.bin，templates/inav-9.1.0-r2，見 [移植依據](inav-morakot.md) |
 
 ## ArduPilot
 

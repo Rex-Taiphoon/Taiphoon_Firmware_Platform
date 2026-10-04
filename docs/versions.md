@@ -27,7 +27,7 @@ workflow tag 需保留、不移動或刪除；可用 GitHub tag ruleset 限制�
 5. 執行 tests、TypeScript、前端公開邊界檢查。提交流程並建立新的 platform-build-v2-* tag，不移動既有 tag。
 6. 用新 tag 執行 Actions，驗證完整配置套用、內嵌版本、board ID、映像容量、下載 bytes／SHA-256、Release 內容及舊工作回歸，再部署 API／Pages。
 
-新版本的雲端編譯成功不等同硬體相容性／飛行驗收；待驗證選項與載具要各自測試。INAV 仍待 Morakot 定義。
+新版本的雲端編譯成功不等同硬體相容性／飛行驗收；待驗證選項與載具要各自測試。INAV 9.1.0 已新增依 ArduPilot／PX4 配置推導的 Morakot 定義；板載 IIS2MDC、CAN／Ethernet 未接入，見 [移植依據與刷寫方式](inav-morakot.md)。
 
 ## 命名與修改摘要
 
@@ -69,6 +69,7 @@ Bootloader r3 修正附件的 idle stack 750 → 768 bytes、init stack 3194 →
 | ArduPilot | 4.7.1、4.7.0、4.6.3 | 官方 Copter tag commit；4.6.3 原 fork SHA 與官方 tag 相同。套用獨立 hwdef/Morakot |
 | Betaflight | 2026.6.2、2026.6.1；另保留原 2026.12.0-alpha 開發來源 | 官方對應 release commit，加上 configs/MORAKOT；alpha 為固定官方開發 commit，不是正式 release tag |
 | AM32 | 2.21、2.20 | 官方 am32-firmware/AM32 tag commit，在各版官方 targets.h 加入 Morakot 定義，保留該版原生硬體映射及其他目標 |
+| INAV | 9.1.0 | 官方 iNavFlight/inav 9.1.0 tag commit，加上 templates/inav-9.1.0-r2 的 src/main/target/MORAKOT；獨立 CMake／Ninja 流程 |
 
 選定版本後，API 保存來源完整 SHA、該版完整配置與模板，Actions checkout 同一 SHA，再套用受控的 Morakot 定義。PX4 同時核對官方 tag 物件與 Git describe。編譯器與編譯命令由維護者固定，使用者只能修改受控配置／選項。歷史使用 Rex fork 的 PX4 beta 配置僅供找回舊工作；新建 beta 工作使用官方 tag，不混入 tag 之後的變更。新增下一個版本仍須進行雲端驗證與部署清單，這是版本支援維護，不需要使用者本地編譯。
 

@@ -229,6 +229,13 @@ export const boardFiles: Record<string,string[]> = {
     "hardware_setup.c",
     "target.c",
     "target.h"
+  ],
+  "inav-9.1.0-r2": [
+    "CMakeLists.txt",
+    "config.c",
+    "hardware_setup.c",
+    "target.c",
+    "target.h"
   ]
 };
 export const allowedHeaders: Record<string,string[]> = {
@@ -611,6 +618,20 @@ export const allowedHeaders: Record<string,string[]> = {
     "sensors/battery.h",
     "stdbool.h",
     "stdint.h"
+  ],
+  "inav-9.1.0-r2": [
+    "drivers/bus.h",
+    "drivers/io.h",
+    "drivers/io_impl.h",
+    "drivers/pwm_mapping.h",
+    "drivers/sensor.h",
+    "drivers/time.h",
+    "drivers/timer.h",
+    "io/serial.h",
+    "platform.h",
+    "sensors/battery.h",
+    "stdbool.h",
+    "stdint.h"
   ]
 };
 export const lockedPx4Config: Record<string,string[]> = {
@@ -663,7 +684,8 @@ export const templateRevisions: Record<string,string> = {
   "am32": "4b8dc45abeeb5fdb615793c634469156f623a494bb97e7933a53af6014d8c22e",
   "am32-2.20": "6094deed86ed8baebf794ae098dcd2c919cd3ff739a82569e943a6c09b9e17ff",
   "am32-2.21": "3a83a960cac0dd0cfac7ccd771f393e22fff8fa786bbbcd847edb0790aa78bab",
-  "inav-9.1.0": "e39dd2cd3a6cf749cd19e5dcb5d7aac91f197a3f8abd6b2cde1be2ea6975e192"
+  "inav-9.1.0": "e39dd2cd3a6cf749cd19e5dcb5d7aac91f197a3f8abd6b2cde1be2ea6975e192",
+  "inav-9.1.0-r2": "51728b3e91811f57a92335232dd87c895758c68a07f7d0309d5764dacd864deb"
 };
 export const lockedProfileConfig: Record<string,Record<string,string[]>> = {
   "px4": {
