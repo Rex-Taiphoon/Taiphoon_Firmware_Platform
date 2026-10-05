@@ -1,4 +1,4 @@
-name: ardupilot Morakot build
+name: ArduPilot Taiphoon hardware build
 run-name: Firmware ${{ inputs.request_id }}
 on:
   workflow_dispatch:

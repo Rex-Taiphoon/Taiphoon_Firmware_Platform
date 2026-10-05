@@ -1,3 +1,4 @@
+import { ardupilotBoard } from './hardware.ts';
 import { targetFor, type FirmwareId } from './catalog.ts';
 import { allowedHeaders, lockedPx4Config, lockedProfileConfig, boardFiles } from './board-files.ts';
 
@@ -68,8 +69,22 @@ export function validateFiles(target: FirmwareId, value: unknown, profileId?: st
     } else if (target === 'px4' && path.endsWith('/Kconfig')) {
       if (/\$|`|^\s*(?:source|rsource|osource|orsource)\b/m.test(text)) throw new Error('Kconfig 不允許執行命令或引用其他設定');
     } else if (target === 'ardupilot') {
-      for (const line of text.split('\n').map(l => l.split('#')[0].trim()).filter(Boolean)) if (/^(?:include|env|ROMFS|ROMFS_WILDCARD)\b/.test(line) || /[$`;{}]|\.\./.test(line)) throw new Error('hwdef 不允許引用其他檔案、執行指令或修改編譯環境');
-      if (path.startsWith('hwdef') && (!/^MCU STM32H7xx STM32H743xx$/m.test(text) || !/^APJ_BOARD_ID (?:AP_HW_Morakot|1210)$/m.test(text))) throw new Error('必須保留 Morakot MCU 與 board ID');
+      const board = ardupilotBoard(specification);
+      const lines = text.split('\n').map(l => l.split('#')[0].trim().replace(/\s+/g,' ')).filter(Boolean);
+      const includes = (board.allowedIncludes?.[path] || []).map(p => 'include '+p);
+      for (const line of lines) {
+        if (includes.includes(line) || (specification.ardupilotBoard && line === 'env AP_PERIPH 1')) continue;
+        if (/^(?:include|env|ROMFS|ROMFS_WILDCARD)\b/.test(line) || /[$`;{}]|\.\./.test(line)) throw new Error('hwdef 不允許引用其他檔案、執行指令或修改編譯環境');
+      }
+      if (path.startsWith('hwdef')) {
+        const identities = lines.filter(l => /^(?:MCU|APJ_BOARD_ID)\b/.test(l));
+        if (identities.filter(l=>l.startsWith('MCU ')).length!==1 || !identities.includes('MCU '+board.mcu) || identities.filter(l=>l.startsWith('APJ_BOARD_ID ')).length!==1 || !identities.some(l=>l==='APJ_BOARD_ID '+board.boardId || (board.boardIdToken && l==='APJ_BOARD_ID '+board.boardIdToken))) throw new Error('必須保留所選硬體的 MCU 與 board ID');
+        for (const locked of [...(board.lockedHwdef[path] || []), ...includes]) {
+          const key = locked.split(' ').slice(0,locked.startsWith('define ')?2:1).join(' ');
+          if (lines.filter(l=>l===key || l.startsWith(key+' ')).length!==1 || !lines.includes(locked)) throw new Error('必須保留所選硬體的 Flash 配置、周邊模式與識別');
+        }
+        if (specification.ardupilotBoard && lines.some(l=>/^undef (?:CAN_APP_NODE_NAME|HAL_STORAGE_SIZE)|^define (?:APJ_BOARD_ID|FLASH_\w+|MCU)\b/.test(l))) throw new Error('不能覆寫硬體識別與 Flash 配置');
+      }
       if (path === 'defaults.parm') for (const line of text.split('\n').map(l => l.split('#')[0].trim()).filter(Boolean)) if (!/^[A-Z][A-Z0-9_]+\s+-?\d+(?:\.\d+)?$/.test(line)) throw new Error('預設參數必須使用名稱與數值');
     } else if(target==='inav' && path==='CMakeLists.txt') {
       if(withoutComments(text).replace(/#[^\n]*/g,'').trim()!=='target_stm32h743xi(MORAKOT HSE_MHZ 8)')throw new Error('必須保留 MORAKOT STM32H743、8 MHz 晶振與受控建置入口');

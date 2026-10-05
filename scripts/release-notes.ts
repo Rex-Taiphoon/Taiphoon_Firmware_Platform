@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { hardwareLabel } from '../shared/hardware.ts';
 import { targetFor } from '../shared/catalog.ts';
 import { templateData } from '../server/templates-data.ts';
 import type { SavedRequest, Provenance } from '../shared/domain.ts';
@@ -18,8 +19,8 @@ const safe=(s:string)=>s.replace(/[\r\n]/g,' ').replace(/[\\`*_{}[\]<>!|]/g,c=>'
 export function releaseDescription(saved:SavedRequest,manifest:Provenance,repository:string):string {
   const changes=configurationChanges(saved),t=targetFor(saved.config.target,saved.config.profileId);
   const format=(v:string|boolean)=>typeof v==='boolean'?(v?'啟用':'停用'):v;
-  const lines=[`${t.name} ${manifest.displayFirmwareVersion || manifest.firmwareVersion} · Morakot${manifest.variant && manifest.variant!=='Morakot'?' · '+manifest.variant:''} · ${manifest.buildDate}（台灣時間）`,
-    ...(manifest.variant==='bootloader'?['Bootloader：BIN／ELF，Flash 位址 0x08000000；使用 SWD／DFU，主韌體更新入口不適用。']:[]), '', '修改摘要（相對於此版本的 Morakot 預設配置）：'];
+  const lines=[`${t.name} ${manifest.displayFirmwareVersion || manifest.firmwareVersion} · ${safe(hardwareLabel(t))}${manifest.variant && manifest.variant!=='Morakot'?' · '+manifest.variant:''} · ${manifest.buildDate}（台灣時間）`,
+    ...(manifest.variant==='bootloader'?['Bootloader：BIN／ELF，Flash 位址 0x08000000；使用 SWD／DFU，主韌體更新入口不適用。']:[]), '', `修改摘要（相對於此版本的 ${safe(hardwareLabel(t))} 預設配置）：`];
   if(saved.config.target==='inav')lines.splice(1,0,'驗證範圍：雲端編譯及套件檢查，尚未實機驗收。原生 INAV HEX／BIN 起點 0x08000000；透過 STM32 DFU／SWD 安裝會覆蓋 PX4／ArduPilot bootloader。板載 IIS2MDC、CAN／Ethernet 未接入。');
   for(const o of changes.options)lines.push(`- ${safe(o.label)}：${safe(format(o.before))} → ${safe(format(o.after))}`);
   let excerptBudget=3500;

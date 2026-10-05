@@ -4,6 +4,7 @@ import { resolve, join, basename } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { GitHub, GitHubError } from '../server/github.ts';
 import { validateConfig, canonicalConfig, requestId, sha, verifyProvenance, releaseIdentity, type Snapshot, type SavedRequest, type Provenance } from '../shared/domain.ts';
+import { ardupilotBoard } from '../shared/hardware.ts';
 import { targetFor } from '../shared/catalog.ts';
 import { plan, applySettings } from './adapter.ts';
 import { gitSafetyEnvironment } from './container.ts';
@@ -74,6 +75,10 @@ if (mode === 'prepare') {
     const expected=/-\d+-g[0-9a-f]+$/.test(target.version || '')?'v'+target.version:tag+'-0-g'+target.sourceSha.slice(0,10);
     if (run('git',['rev-parse',`refs/tags/${tag}`],source,true).trim()!==tagSha || described!==expected)throw new Error('PX4 上游版本 tag 與來源歷史不一致');
   }
+  if (c.options.vehicle==='AP_Periph') {
+    const header=readFileSync(join(source,'Tools/AP_Periph/version.h'),'utf8');
+    if(!header.includes('AP_Periph V'+target.version) && !header.includes('AP_Periph '+target.version))throw new Error('AP_Periph 固定來源版本不符');
+  }
   applySettings(c, source, definition);
   let toolchain = '';
   if (c.target === 'ardupilot' || c.target === 'px4') {
@@ -89,9 +94,10 @@ if (mode === 'prepare') {
     const dockerArgs = ['run', '--rm', '-e', `PATH=${c.target === 'ardupilot' ? '/opt/gcc-arm-none-eabi-10/bin:' : ''}${imagePath}`, ...gitEnvironment, '-v', `${source}:/source`, '-w', '/source', image];
     const compilerOutput=run('docker', [...dockerArgs, 'arm-none-eabi-gcc', '--version'], process.cwd(), true);
     toolchain = (compilerOutput.split('\n').find(line=>line.includes('arm-none-eabi-gcc')) || compilerOutput.split('\n')[0]) + `; ${imageDigest}`;
-    if (c.target === 'ardupilot') {
-      for (const args of [['configure','--board','Morakot','--bootloader'],['bootloader']]) run('docker',[...dockerArgs,'./waf',...args],process.cwd());
-      copyFileSync(join(source,'build/Morakot/bin/AP_Bootloader.bin'),join(source,'Tools/bootloaders/Morakot_bl.bin'));
+    if (c.target === 'ardupilot' && ardupilotBoard(target).buildBootloader) {
+      const board=ardupilotBoard(target).board;
+      for (const args of [['configure','--board',board,'--bootloader'],['bootloader']]) run('docker',[...dockerArgs,'./waf',...args],process.cwd());
+      copyFileSync(join(source,`build/${board}/bin/AP_Bootloader.bin`),join(source,`Tools/bootloaders/${board}_bl.bin`));
     }
     for (const command of c.target === 'px4' ? plan(c,'/definition').slice(1) : plan(c, '/definition')) run('docker', [...dockerArgs, command.executable, ...command.args], process.cwd());
   } else {
@@ -103,12 +109,12 @@ if (mode === 'prepare') {
   }
   mkdirSync('output', { recursive: true });
   const bootloader=c.target==='px4' && c.options.buildTarget==='bootloader';
-  const directory = c.target === 'ardupilot' ? join(source, 'build/Morakot/bin') : c.target === 'px4' ? join(source, bootloader?'build/morakot_v6_bootloader':'build/morakot_v6_default') : c.target==='inav'?join(source,'build'):join(source, 'obj');
-  const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? [`ardu${c.options.vehicle}.apj`,`ardu${c.options.vehicle}.bin`].includes(name) : c.target === 'px4' ? (bootloader?['morakot_v6_bootloader.bin','morakot_v6_bootloader.elf'].includes(name):name === 'morakot_v6_default.px4') : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : c.target==='inav'?['hex','bin'].some(ext=>name===`inav_${target.version}_MORAKOT.${ext}`):name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
+  const directory = c.target === 'ardupilot' ? join(source, `build/${ardupilotBoard(target).board}/bin`) : c.target === 'px4' ? join(source, bootloader?'build/morakot_v6_bootloader':'build/morakot_v6_default') : c.target==='inav'?join(source,'build'):join(source, 'obj');
+  const files = readdirSync(directory).filter(name => c.target === 'ardupilot' ? [`${ardupilotBoard(target).outputs[String(c.options.vehicle)]}.apj`,`${ardupilotBoard(target).outputs[String(c.options.vehicle)]}.bin`].includes(name) : c.target === 'px4' ? (bootloader?['morakot_v6_bootloader.bin','morakot_v6_bootloader.elf'].includes(name):name === 'morakot_v6_default.px4') : c.target === 'betaflight' ? /MORAKOT.*\.(hex|bin)$/.test(name) : c.target==='inav'?['hex','bin'].some(ext=>name===`inav_${target.version}_MORAKOT.${ext}`):name.includes(`MORAKOT_4IN1_ESC_60A_${c.options.variant}_`) && /\.(hex|bin)$/.test(name));
   if (!files.length) throw new Error('編譯成功但找不到目標產物');
   if (bootloader) verifyPx4Bootloader(readFileSync(join(directory,'morakot_v6_bootloader.bin')),readFileSync(join(directory,'morakot_v6_bootloader.elf')));
   else if (c.target === 'px4') verifyPx4(readFileSync(join(directory,files[0])),s.sourceSha,target.version);
-  if (c.target === 'ardupilot') verifyArduPilot(readFileSync(join(directory,`ardu${c.options.vehicle}.apj`)),readFileSync(join(directory,`ardu${c.options.vehicle}.bin`)),s.sourceSha);
+  if (c.target === 'ardupilot') verifyArduPilot(readFileSync(join(directory,`${ardupilotBoard(target).outputs[String(c.options.vehicle)]}.apj`)),readFileSync(join(directory,`${ardupilotBoard(target).outputs[String(c.options.vehicle)]}.bin`)),s.sourceSha,ardupilotBoard(target));
   if(c.target==='inav')verifyInav(readFileSync(join(directory,`inav_${target.version}_MORAKOT.hex`)),readFileSync(join(directory,`inav_${target.version}_MORAKOT.bin`)),s.sourceSha,target.version!);
   const buildRun=validateRunContext(JSON.parse(readFileSync('work/run.json','utf8')),expectedRun);
   const identity = releaseIdentity(s,Number(process.env.GITHUB_RUN_ID),Number(process.env.GITHUB_RUN_ATTEMPT),buildRun);
@@ -144,7 +150,7 @@ if (mode === 'prepare') {
   if (s.config.target === 'ardupilot') {
     const apj=manifest.assets.find(a=>a.name.endsWith('.apj')),bin=manifest.assets.find(a=>a.name.endsWith('.bin'));
     if(!apj||!bin)throw new Error('ArduPilot 缺少 APJ／BIN');
-    verifyArduPilot(readFileSync(join('output',apj.name)),readFileSync(join('output',bin.name)),s.sourceSha);
+    verifyArduPilot(readFileSync(join('output',apj.name)),readFileSync(join('output',bin.name)),s.sourceSha,ardupilotBoard(targetFor('ardupilot',s.config.profileId)));
   }
   if(s.config.target==='inav'){
     const hex=manifest.assets.find(a=>a.name.endsWith('.hex')),bin=manifest.assets.find(a=>a.name.endsWith('.bin'));

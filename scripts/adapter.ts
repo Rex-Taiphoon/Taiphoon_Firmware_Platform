@@ -1,3 +1,4 @@
+import { ardupilotBoard } from '../shared/hardware.ts';
 import { targetFor } from '../shared/catalog.ts';
 import { readFileSync, writeFileSync, mkdirSync, cpSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -5,9 +6,9 @@ import { validateConfig, type Config } from '../shared/domain.ts';
 
 export type Command = { executable: string; args: string[] };
 export function plan(value: unknown, definitionDir: string): Command[] {
-  const c = validateConfig(value);
+  const c = validateConfig(value), t = targetFor(c.target,c.profileId);
   switch (c.target) {
-    case 'ardupilot': return [{ executable: './waf', args: ['configure', '--board', 'Morakot', '--default-parameters=platform-defaults.parm', '--extra-hwdef=platform-extra.dat'] }, { executable: './waf', args: [String(c.options.vehicle)] }];
+    case 'ardupilot': return [{ executable: './waf', args: ['configure', '--board', ardupilotBoard(t).board, ...(t.editableFiles?.includes('defaults.parm') ? ['--default-parameters=platform-defaults.parm'] : []), '--extra-hwdef=platform-extra.dat'] }, { executable: './waf', args: [String(c.options.vehicle)] }];
     case 'px4': return [{ executable: 'bash', args: ['Tools/setup/ubuntu.sh', '--no-sim-tools'] }, { executable: 'make', args: ['-j2', c.options.buildTarget==='bootloader'?'morakot_v6_bootloader':'morakot_v6_default', `PX4_CMAKE_BUILD_TYPE=${c.options.buildType === 'Release' ? 'MinSizeRel' : 'Debug'}`] }];
     case 'betaflight': return [{ executable: 'make', args: ['arm_sdk_install', `BETAFLIGHT_CONFIG=${definitionDir}`] }, { executable: 'make', args: ['-j2', 'fwo', 'CONFIG=MORAKOT', `BETAFLIGHT_CONFIG=${definitionDir}`] }];
     case 'am32': return [{ executable: 'make', args: ['arm_sdk_install'] }, { executable: 'make', args: ['-j2', `MORAKOT_4IN1_ESC_60A_${c.options.variant}`] }];
@@ -38,11 +39,12 @@ export function amendAm32(text: string, variant: string, enabled: boolean): stri
 export function applySettings(config: Config, source: string, definition: string): void {
   const c = validateConfig(config), t = targetFor(c.target,c.profileId), template = 'templates/'+(t.templateKey || c.target);
   if (c.target === 'ardupilot') {
-    const dir = join(source, 'libraries/AP_HAL_ChibiOS/hwdef/Morakot');
+    const board = ardupilotBoard(t);
+    const dir = join(source, 'libraries/AP_HAL_ChibiOS/hwdef', board.board);
     mkdirSync(dir, { recursive: true });
-    for (const name of ['hwdef.dat','hwdef-bl.dat','defaults.parm']) {
+    for (const name of t.editableFiles || ['hwdef.dat','hwdef-bl.dat','defaults.parm']) {
       let text = c.files?.[name] ?? readFileSync(join(template,name),'utf8');
-      text = text.replace(/^APJ_BOARD_ID AP_HW_Morakot$/m, 'APJ_BOARD_ID 1210');
+      if (board.boardIdToken) text = text.replace('APJ_BOARD_ID '+board.boardIdToken, 'APJ_BOARD_ID '+board.boardId);
       writeFileSync(join(dir,name),text);
     }
     if(c.schemaVersion===1){
@@ -50,8 +52,8 @@ export function applySettings(config: Config, source: string, definition: string
     writeFileSync(join(source, 'platform-defaults.parm'), original + `\nOSD_TYPE2 ${c.options.osd ? c.options.osdType2 : '0'}\n`);
     writeFileSync(join(source, 'platform-extra.dat'), `define OSD_ENABLED ${c.options.osd ? 1 : 0}\n${c.options.osd ? '' : 'define HAL_WITH_MSP_DISPLAYPORT 0\ndefine HAL_WITH_OSD_BITMAP 0\ndefine OSD_PARAM_ENABLED 0\n'}define AP_SCRIPTING_ENABLED ${c.options.scripting ? 1 : 0}\n`);
     }else{
-      copyFileSync(join(dir,'defaults.parm'),join(source,'platform-defaults.parm'));
-      writeFileSync(join(source,'platform-extra.dat'),`define AP_SCRIPTING_ENABLED ${c.options.scripting ? 1 : 0}\n`);
+      if(t.editableFiles?.includes('defaults.parm'))copyFileSync(join(dir,'defaults.parm'),join(source,'platform-defaults.parm'));
+      writeFileSync(join(source,'platform-extra.dat'), c.options.scripting === undefined ? '' : `define AP_SCRIPTING_ENABLED ${c.options.scripting ? 1 : 0}\n`);
     }
   } else if (c.target === 'px4') {
     const dir = join(source,'boards/morakot/v6');

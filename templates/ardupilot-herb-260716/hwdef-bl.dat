@@ -1,0 +1,88 @@
+# hw definition file for processing by chibios_pins.py
+
+# MCU class and specific type
+MCU STM32H7xx STM32H757xx
+define CORE_CM7
+define SMPS_PWR
+
+# setup build for a peripheral firmware
+env AP_PERIPH 1
+
+# crystal frequency(25MHz)
+OSCILLATOR_HZ 25000000
+
+# board ID. See Tools/AP_Bootloader/board_types.txt
+APJ_BOARD_ID 12345
+
+# MCU Flash size
+FLASH_SIZE_KB 2048
+
+# bootloader is installed at zero offset
+FLASH_RESERVE_START_KB 0
+
+# the location where the bootloader will put the firmware
+FLASH_BOOTLOADER_LOAD_KB 256
+
+# LEDs
+PI13 SYS_LED OUTPUT  HIGH # On STM32H757 board, AP_Periph running LED off
+PJ2  BLD_LED OUTPUT  LOW # On STM32H757 board, AP_Periph bootloader LED on
+#PE5  LED_R1 OUTPUT  HIGH GPIO(0)
+#PE6  LED_G1 OUTPUT  HIGH GPIO(1)
+#PE7  LED_B1 OUTPUT  HIGH GPIO(2)
+
+#define AP_NOTIFY_GPIO_LED_RGB_RED_PIN 0
+#define AP_NOTIFY_GPIO_LED_RGB_GREEN_PIN 1
+#define AP_NOTIFY_GPIO_LED_RGB_BLUE_PIN 2
+#define AP_NOTIFY_GPIO_LED_RGB_ENABLED 1
+
+define HAL_LED_ON 1
+
+# USB setup
+USB_VENDOR 0x2DAE 
+USB_PRODUCT 0x1016
+USB_STRING_MANUFACTURER "Taiphoon"
+
+# order of UARTs (and USB)
+SERIAL_ORDER OTG1 
+
+PA9 VBUS INPUT OPENDRAIN
+PA11 OTG_FS_DM OTG1
+PA12 OTG_FS_DP OTG1
+
+PA13 JTMS-SWDIO SWD
+PA14 JTCK-SWCLK SWD
+
+# -- Ethernet ---
+PA1  ETH_RMII_REF_CLK       ETH1
+PA2  ETH_MDIO               ETH1 
+PA7  ETH_RMII_CRS_DV        ETH1 
+PC1  ETH_MDC                ETH1
+PC4  ETH_RMII_RXD0          ETH1
+PC5  ETH_RMII_RXD1          ETH1
+PB12 ETH_RMII_TXD0          ETH1
+PB13 ETH_RMII_TXD1          ETH1
+PB11 ETH_RMII_TX_EN         ETH1
+# define BOARD_PHY_ID MII_LAN8720_ID
+define BOARD_PHY_ADDRESS 1 # 根據LAN8720A模組原理圖
+define BOARD_PHY_RMII
+
+# auto-negotiation doesn't work, force 100MBit full duplex
+define STM32_MAC_PHY_LINK_TYPE MAC_LINK_100_FULLDUPLEX
+
+include ../include/network_bootloader.inc
+
+
+# --- CAN ---
+# supports upto 8MBits/s
+# CANFD_SUPPORTED 8
+
+# First CAN Bus
+PD0 CAN1_RX CAN1
+PD1 CAN1_TX CAN1
+
+# Second CAN Bus
+# PB5 CAN2_RX CAN2
+# PB6 CAN2_TX CAN2
+
+# enable DFU by default
+# ENABLE_DFU_BOOT 1

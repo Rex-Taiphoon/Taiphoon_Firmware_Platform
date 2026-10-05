@@ -1,6 +1,8 @@
 # Taiphoon Firmware Platform
 
-React + TypeScript 的 Morakot 線上配置與雲端編譯平台。正式操作在 GitHub Pages，韌體只在 GitHub Actions 編譯，結果存於私人 Releases，不需要 WSL 或常駐編譯機。
+React + TypeScript 的 Taiphoon 多硬體線上配置與雲端編譯平台。正式操作在 GitHub Pages，韌體只在 GitHub Actions 編譯，結果存於私人 Releases，不需要 WSL 或常駐編譯機。
+
+硬體與硬體版本獨立選擇，新增 NariGPS／Herb Node 的 ArduPilot AP_Periph 配置；Morakot Ver2 保留待接入。接入方式、來源查核與尚待完成的部署／雲端驗收見 [hardware.md](docs/hardware.md)。
 
 ## 正式入口
 
@@ -62,7 +64,7 @@ API：GET `/auth/login`、`/auth/callback`、`/session`、`/templates/:target`�
 
 ## Pages 維護
 
-私人 repository 的帳號方案不支援 Pages，故使用獨立公開 repo。`deployment/pages-workflow.yml` 只部署公開 repo 的 site 目錄。私人平台的前端建置 workflow 產生可匯出 artifact，沒有跨 repo 寫入 token 或私人 Pages 部署。
+私人 repository 的帳號方案不支援 Pages，故使用獨立公開 repo。`deployment/pages-workflow.yml` 只部署公開 repo 的 site 目錄。私人平台的前端建置 workflow 只執行測試、建置與公開資產審核，不上傳 `frontend-pages` artifact；公開 Pages 部署不依賴此 artifact。前端資產使用下列本地建置與匯出流程，沒有跨 repo 寫入 token 或私人 Pages 部署。
 
 開發者可建置前端：
 
@@ -88,9 +90,9 @@ node scripts/export-pages.mjs
 | PX4 v0.0.0 | 固定上游 tag／ancestry 未取得；流程阻止發布 |
 | 發布失敗 | 查 publish；版本、雜湊、大小、資產不符即拒絕，保留 draft |
 | 私人下載 404 | 瀏覽器 GitHub 登入與 repository 存取資格 |
-| 重跑 | 使用 Re-run all jobs；只重跑失敗 job 可能缺少該 attempt artifact |
+| 重跑 | 使用 Re-run all jobs；只重跑失敗 job 可能缺少該 attempt cache |
 
-韌體 workflows 只手動觸發，publish_release 預設 false；新版只編譯模式不發布 Release／cache，可查看 Actions 紀錄。正常 Pages 按鈕明確傳 true。Release 保留至人類管理，不自動刪除。公開 repo 的設定／紀錄／Release 可能公開；本次私人平台不因 Pages 部署而改變可見性。
+韌體 workflows 只手動觸發，publish_release 預設 false；新版只編譯模式不發布 Release／cache，可查看 Actions 紀錄。正常 Pages 按鈕明確傳 true。正式韌體保存在私人 Release，跨 job 使用綁定同次 run／attempt／SHA 的 cache 暫存，不使用 Actions artifact 保存韌體。Release 保留至人類管理，不自動刪除。公開 repo 的設定／紀錄／Release 可能公開；本次私人平台不因 Pages 部署而改變可見性。
 
 目錄：src 前端、shared schema／目標、server API、templates 板级配置、scripts 編譯／發布封裝、tests 關鍵流程。品牌標誌沿用 Taiphoon；介面採簡潔白灰與系統字體，移除 Morakot 示意圖。
 

@@ -1,4 +1,5 @@
 import { boardFiles, templateRevisions } from './board-files.ts';
+import { hardwareFor, type HardwareIdentity, type ArduPilotBoard } from './hardware.ts';
 export type FirmwareId = 'ardupilot' | 'px4' | 'betaflight' | 'inav' | 'am32';
 export type Field = { key: string; label: string; kind: 'boolean' | 'choice'; choices?: { value: string; label: string }[]; default: string | boolean };
 export type Target = {
@@ -8,6 +9,8 @@ export type Target = {
   version?: string; vehicleVersions?: Record<string,string>; editableFiles?: string[]; workflow?: string;
   profileId?: string; templateKey?: string; templateRevision?: string; adapterRevision?: string;
   image?: string; upstreamTag?: string; upstreamTagSha?: string;
+  hardware?: HardwareIdentity; ardupilotBoard?: ArduPilotBoard;
+  recipeRefs?: string[];
 };
 export const targets: Target[] = [
   { id: 'ardupilot', name: 'ArduPilot', board: 'Morakot', description: 'Copter / Plane / Rover 4.6.3 · Sub 4.6.0-dev', repository: 'Rex-Taiphoon/ardupilot', ref: '92b0cd78', sourceSha: '92b0cd788ec29406f26c6f9c31d5ceedbd1cc538', definitionPath: 'libraries/AP_HAL_ChibiOS/hwdef/Morakot/hwdef.dat', version: '4.6.3', vehicleVersions: {copter:'4.6.3',plane:'4.6.3',rover:'4.6.3',sub:'4.6.0-dev'}, workflow: 'ardupilot.yml', editableFiles: ['hwdef.dat', 'hwdef-bl.dat', 'defaults.parm'], available: true, note: '使用附件固定來源與 Morakot 配置；此來源的 Sub 版本為 4.6.0-dev', fields: [
@@ -50,7 +53,7 @@ profiles.push({...px4, profileId:'px4-1.17.0-morakot-r1', repository:'PX4/PX4-Au
   description:'1.17.0 · Morakot', templateKey:'px4-1.17', templateRevision:templateRevisions['px4-1.17'],
   editableFiles:boardFiles['px4-1.17'], upstreamTag:'v1.17.0', upstreamTagSha:'a5eb12d2ab591251faa009f76b2685b8cc64405d',
   note:'官方 PX4 1.17.0 固定來源，搭配獨立 Morakot 配置；雲端編譯驗證不等同硬體驗收'});
-export function profilesFor(id: FirmwareId): Target[] { return profiles.filter(t=>t.id===id); }
+export function profilesFor(id: FirmwareId, hardware?: HardwareIdentity): Target[] { return profiles.filter(t=>t.id===id && (!hardware || (hardwareFor(t).id===hardware.id && hardwareFor(t).revision===hardware.revision))); }
 const am32=profiles.find(t=>t.id==='am32')!;
 // The fixed source's Inc/version.h defines 2.20. Keep the former SHA-labelled profile for history.
 am32.available=false;
@@ -95,7 +98,30 @@ profiles.push({...initialInav,available:true,profileId:'inav-9.1.0-morakot-r2',t
 export function displayVersion(target: Target,variant?:string): string {
   return (target.vehicleVersions?.[variant || ''] || target.version || 'Development').replace(/-\d+-g[0-9a-f]+$/,'');
 }
-export function defaultProfileId(id: FirmwareId): string | undefined { const choices=profilesFor(id).filter(t=>t.available).sort((a,b)=>displayVersion(b).localeCompare(displayVersion(a),undefined,{numeric:true})); return (choices.find(t=>!/-alpha|-beta|-rc|dev/i.test(t.version || '')) || choices[0])?.profileId; }
+// AP_Periph sources identified from the supplied HEX, then resolved to full commits.
+for (const board of [
+  { hardwareId:'narigps', name:'NariGPS', board:'Taiphoon_Nari', key:'ardupilot-nari-260716', sha:'d36256f87d135de0d5f40bcd0930f5f26431228a', mcu:'STM32F4xx STM32F469xx', offset:64, storage:16384, node:'org.Taiphoon.Nari' },
+  { hardwareId:'herb-node', name:'Herb Node', board:'Taiphoon_Herb', key:'ardupilot-herb-260716', sha:'140d0070276c6c203ab851ccf16af7c096fcbb92', mcu:'STM32H7xx STM32H757xx', offset:256, storage:32768, node:'Taiphoon.Herb' },
+]) {
+  profiles.push({ id:'ardupilot', name:'ArduPilot', board:board.board, hardware:{id:board.hardwareId,revision:'current'},
+    profileId:`ardupilot-ap-periph-1.9.0-dev-${board.hardwareId}-260716-r1`,
+    repository:'ArduPilot/ardupilot', sourceSha:board.sha, ref:board.sha, version:'1.9.0-dev', vehicleVersions:{AP_Periph:'1.9.0-dev'},
+    definitionPath:`libraries/AP_HAL_ChibiOS/hwdef/${board.board}/hwdef.dat`, templateKey:board.key,
+    templateRevision:templateRevisions[board.key], editableFiles:boardFiles[board.key], adapterRevision:'taiphoon-multiboard-v1',
+    image:ardu.image, workflow:'ardupilot.yml', recipeRefs:['platform-build-v2-14'], available:true, description:`AP_Periph 1.9.0-dev · ${board.name}`,
+    note:'使用附件板級定義與 HEX 所標示的固定官方來源；尚未完成此平台的雲端編譯與實機驗收。附件版本為配置版本，韌體版本為 AP_Periph 1.9.0-dev。',
+    fields:[{key:'vehicle',label:'韌體種類',kind:'choice',default:'AP_Periph',choices:[{value:'AP_Periph',label:'AP_Periph 周邊韌體'}]}],
+    ardupilotBoard:{board:board.board,mcu:board.mcu,boardId:12345,maxImageSize:(2048-board.offset)*1024,
+      buildBootloader:true,outputs:{AP_Periph:'AP_Periph'},binaryIdentity:board.node,
+      allowedIncludes:board.hardwareId==='herb-node'?{'hwdef-bl.dat':['../include/network_bootloader.inc']}:{},
+      lockedHwdef:{
+        'hwdef.dat':[`FLASH_SIZE_KB 2048`,`FLASH_RESERVE_START_KB ${board.offset}`,'STORAGE_FLASH_PAGE 14',`define HAL_STORAGE_SIZE ${board.storage}`,`define CAN_APP_NODE_NAME "${board.node}"`,'env AP_PERIPH 1'],
+        'hwdef-bl.dat':['FLASH_SIZE_KB 2048','FLASH_RESERVE_START_KB 0',`FLASH_BOOTLOADER_LOAD_KB ${board.offset}`,'env AP_PERIPH 1'],
+      },
+    },
+  });
+}
+export function defaultProfileId(id: FirmwareId, hardware?: HardwareIdentity): string | undefined { const choices=profilesFor(id,hardware).filter(t=>t.available).sort((a,b)=>displayVersion(b).localeCompare(displayVersion(a),undefined,{numeric:true})); return (choices.find(t=>!/-alpha|-beta|-rc|dev/i.test(t.version || '')) || choices[0])?.profileId; }
 export function targetFor(id: unknown, profileId?: string): Target {
   const target = profileId ? profiles.find(t=>t.id===id && t.profileId===profileId) : targets.find(t => t.id === id);
   if (!target) throw new Error('不支援的韌體目標');

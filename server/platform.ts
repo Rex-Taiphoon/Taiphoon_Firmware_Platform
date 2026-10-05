@@ -45,6 +45,7 @@ export class Platform {
       ...(target.definition ? { definitionRepository: target.definition.repository, definitionSha: target.definition.sha } : {}) };
     if(config.schemaVersion===2){
       const ref=this.env.GITHUB_WORKFLOW_REF;
+      if(target.recipeRefs && !target.recipeRefs.includes(ref))throw new PlatformError(503,'此硬體需要新版多硬體編譯流程；尚未完成部署');
       if(!/^platform-build-v2-[a-z0-9-]+$/.test(ref))throw new PlatformError(503,'新版編譯流程尚未啟用');
       const tag=await this.github.call(this.path(`git/ref/tags/${ref}`));
       if(tag.object?.type!=='commit')throw new ValidationError('編譯流程必須使用固定 commit tag');

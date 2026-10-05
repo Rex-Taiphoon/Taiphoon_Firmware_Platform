@@ -1,3 +1,4 @@
+import { hardwareFor, hardwareReleaseName, ardupilotBoard } from './hardware.ts';
 import { targets, targetFor, displayVersion, type FirmwareId } from './catalog.ts';
 import { validateFiles } from './file-policy.ts';
 export type Config = {
@@ -25,6 +26,7 @@ export type Provenance = {
   firmwareVersion?: string; buildDate?: string; releaseTag?: string; variant?: string;
   profileId?: string; profileDigest?: string; recipeSha?: string; buildNumber?: number; buildStartedAt?: string;
   displayFirmwareVersion?: string;
+  hardwareId?: string; hardwareRevision?: string;
 };
 export type BuildStatus = {
   phase: Phase; message?: string; runId?: number; runAttempt?: number;
@@ -44,6 +46,9 @@ export function validateConfig(value: unknown): Config {
   if(c.target==='inav' && c.schemaVersion!==2)throw new ValidationError('INAV 必須選擇已登錄的韌體版本');
   if (![1,2].includes(Number(c.schemaVersion)) || typeof c.schemaVersion !== 'number' || !targets.some(t=>t.id===c.target) || (c.schemaVersion===2 && typeof c.profileId!=='string')) throw new ValidationError('不支援的設定版本或編譯目標');
   let target;try{target=targetFor(c.target,c.schemaVersion===2 ? c.profileId as string : undefined);}catch{throw new ValidationError('不支援的編譯版本設定');}
+  hardwareFor(target);
+  if(target.hardware && target.id!=='ardupilot')throw new ValidationError('此韌體尚未接入所選硬體的板級編譯規則');
+  if(target.id==='ardupilot')ardupilotBoard(target);
   const o = object(c.options); keys(o, target.fields.map(f => f.key));
   const options: Config['options'] = {};
   for (const f of target.fields) {
@@ -51,6 +56,7 @@ export function validateConfig(value: unknown): Config {
     if (f.kind === 'boolean' ? typeof v !== 'boolean' : !f.choices?.some(choice => choice.value === v)) throw new ValidationError(`${f.label}不在允許範圍`);
     options[f.key] = v as string | boolean;
   }
+  if(target.ardupilotBoard && !target.ardupilotBoard.outputs[String(options.vehicle)])throw new ValidationError('此硬體不支援所選韌體種類');
   let files: Record<string, string> | undefined;
   try { if (c.files !== undefined) files = validateFiles(target.id, c.files, target.profileId); } catch (e) { throw new ValidationError((e as Error).message); }
   const result: Config = { schemaVersion: c.schemaVersion as 1|2, target: target.id, ...(target.profileId ? {profileId:target.profileId} : {}), options, ...(files ? { files } : {}) };
@@ -80,10 +86,10 @@ export function releaseIdentity(saved: Snapshot, runId: number, attempt: number,
     const oldNaming=['platform-build-v2-1','platform-build-v2-2','platform-build-v2-3'].includes(saved.recipeRef || '');
     const separated=!['platform-build-v2-1','platform-build-v2-2','platform-build-v2-3','platform-build-v2-4'].includes(saved.recipeRef || '');
     const readable=displayVersion(t,variant);
-    return {firmwareVersion, variant, profileId:t.profileId, profileDigest:saved.profileDigest, recipeSha:saved.recipeSha,
+    return {firmwareVersion, variant, ...(t.hardware ? {hardwareId:hardwareFor(t).id,hardwareRevision:hardwareFor(t).revision} : {}), profileId:t.profileId, profileDigest:saved.profileDigest, recipeSha:saved.recipeSha,
       ...(!oldNaming ? {displayFirmwareVersion:readable} : {}),
       buildDate:taiwanDate, buildStartedAt:started, buildNumber:run.run_number,
-      releaseTag:`${t.name}${separated?'-':''}${oldNaming?version:readable}-Morakot${variant==='bootloader'?'-Bootloader':''}-${taiwanDate.replaceAll('-','')}-${run.run_number}${attempt>1?'-r'+attempt:''}`};
+      releaseTag:`${t.name}${separated?'-':''}${oldNaming?version:readable}-${hardwareReleaseName(t)}${variant==='bootloader'?'-Bootloader':''}-${taiwanDate.replaceAll('-','')}-${run.run_number}${attempt>1?'-r'+attempt:''}`};
   }
   return { firmwareVersion, buildDate: saved.createdAt.slice(0,10), variant,
     releaseTag: `${t.id}-${variant}-${version}-${date}-${runId}-${attempt}` };

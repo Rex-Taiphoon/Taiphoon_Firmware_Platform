@@ -1,5 +1,13 @@
 /* File names and safe header references only; contains no board implementation. */
 export const boardFiles: Record<string,string[]> = {
+  "ardupilot-nari-260716": [
+    "hwdef-bl.dat",
+    "hwdef.dat"
+  ],
+  "ardupilot-herb-260716": [
+    "hwdef-bl.dat",
+    "hwdef.dat"
+  ],
   "ardupilot": [
     "defaults.parm",
     "hwdef-bl.dat",
@@ -239,6 +247,8 @@ export const boardFiles: Record<string,string[]> = {
   ]
 };
 export const allowedHeaders: Record<string,string[]> = {
+  "ardupilot-nari-260716": [],
+  "ardupilot-herb-260716": [],
   "ardupilot": [],
   "ardupilot-4.7": [],
   "ardupilot-4.7-r2": [],
@@ -667,6 +677,8 @@ export const lockedPx4Config: Record<string,string[]> = {
   ]
 };
 export const templateRevisions: Record<string,string> = {
+  "ardupilot-nari-260716": "94de4b825ec83d9ff13c049ef1a0918e1a9f1b95d35e303d10307b198987ce08",
+  "ardupilot-herb-260716": "304043d34d6936c986c44f88e768cb05c30362891629f27aab07b7049c4a38bc",
   "ardupilot": "9bc041f425011e094bf410dcecf7cbe4184bf0dca38f12341bc8d96b687cc12c",
   "ardupilot-4.7": "9bc041f425011e094bf410dcecf7cbe4184bf0dca38f12341bc8d96b687cc12c",
   "ardupilot-4.7-r2": "bd006d5bf74ba72c8b2c8f323b5a73b5ff5f3b061ff705ac459923f02f6e0425",
