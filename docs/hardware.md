@@ -44,8 +44,10 @@ Herb bootloader 僅允許原本的 `include ../include/network_bootloader.inc`�
 
 ## 部署與驗收狀態
 
-本次已完成本機型別檢查、前端建置與自動測試；尚未執行 Nari／Herb 的 GitHub Actions 韌體編譯、發布或實機驗收。
+2026-10-05 已完成正式部署：私人平台 commit 為 `3879df6fee14e9a7ca6d1e055ac1b4a827627fbe`，公開前端 commit 為 `fcf515b85be062d97ec161e785857a280f935c24`。GitHub Pages [部署工作](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Pages/actions/runs/37258642991) 成功，正式網頁 HTTP 200，線上 JavaScript SHA256 與本機正式建置一致，所有硬體版本名稱已核對。Cloudflare Worker 部署版本為 `2d604ca2-9f58-4e8b-a2a1-b1dff261d5fc`，未登入讀取私人模板仍回應 401。
 
-新 AP_Periph profiles 限定 `platform-build-v2-14`。目前 wrangler.jsonc 仍指向既有 `platform-build-v2-13`，API 在舊流程下會明確拒絕保存新硬體工作，避免把新 profile 送到不認識它的舊 recipe。
+新 AP_Periph profiles 限定 `platform-build-v2-14`，已建立固定 tag 並將正式 API 的 GITHUB_WORKFLOW_REF 切換至該版本。舊流程仍會明確拒絕新硬體工作，避免把新 profile 送到不認識它的舊 recipe。
 
-部署時先將本次完整變更提交至私人 repository，建立指向該 commit 的不可變 `platform-build-v2-14` tag，再更新 Workers 的 GITHUB_WORKFLOW_REF 並部署 API／前端。舊 tag 必須保留。先以 publish_release=false 驗證兩板韌體，再啟用正式操作；若編譯失敗，新增修訂 profile／recipe，保留原追溯資訊。勿把新前端先於對應 API／recipe 當作正式可編譯版本發布。
+65 項本機自動測試、型別檢查、前端／API 建置與公開資產邊界審核通過。另已送出 publish_release=false 的雲端驗證：[NariGPS](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37258583884)、[HerbNode](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform/actions/runs/37258587205)。部署核對時兩工作都通過 validate，build 尚在執行；未發布這兩板的驗證韌體，也尚未進行實機驗收。
+
+後續更新仍须先提交完整 recipe、建立不可變 tag，再部署對應 API／前端。舊 tag 必須保留；若韌體編譯失敗，新增修訂 profile／recipe，保留原追溯資訊。
