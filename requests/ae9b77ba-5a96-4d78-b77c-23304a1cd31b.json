@@ -1,0 +1,22 @@
+{
+  "requestId": "ae9b77ba-5a96-4d78-b77c-23304a1cd31b",
+  "actor": "Rex-Taiphoon",
+  "createdAt": "2026-10-05T03:13:41.215Z",
+  "sourceRepository": "ArduPilot/ardupilot",
+  "sourceSha": "d36256f87d135de0d5f40bcd0930f5f26431228a",
+  "config": {
+    "schemaVersion": 2,
+    "target": "ardupilot",
+    "profileId": "ardupilot-ap-periph-1.9.0-dev-narigps-260716-r1",
+    "options": {
+      "vehicle": "AP_Periph"
+    },
+    "files": {
+      "hwdef-bl.dat": "# hw definition file for processing by chibios_pins.py\n\n# MCU class and specific type\nMCU STM32F4xx STM32F469xx\n\nFLASH_RESERVE_START_KB 0\nFLASH_BOOTLOADER_LOAD_KB 64\n\n# board ID. See Tools/AP_Bootloader/board_types.txt\n# Test for Nari_GPS board ID\nAPJ_BOARD_ID 12345\n\n# setup build for a peripheral firmware\nenv AP_PERIPH 1\n\n# crystal frequency\nOSCILLATOR_HZ 8000000\n\n# assume 2048 flash part\nFLASH_SIZE_KB 2048\n\n# order of UARTs\nSERIAL_ORDER OTG1 USART2\n\n# USB\nPA11 OTG_FS_DM OTG1\nPA12 OTG_FS_DP OTG1\ndefine HAL_OTG_NO_VBUS_DETECTION 1\n\n# USART2\nPA2 USART2_TX USART2\nPA3 USART2_RX USART2\n\n# SWD debugging\nPA13 JTMS-SWDIO SWD\nPA14 JTCK-SWCLK SWD\n\n# enable CAN support\nPD0 CAN1_RX CAN1\nPD1 CAN1_TX CAN1\n\nPB12 LED_BOOTLOADER OUTPUT LOW\ndefine HAL_LED_ON 1",
+      "hwdef.dat": "# Made by Taiphoon\n\n# MCU class and specific type\nMCU STM32F4xx STM32F469xx\n\n# board ID. See Tools/AP_Bootloader/board_types.txt\n# Test for Nari_GPS board ID\nAPJ_BOARD_ID 12345\n\nenv AP_PERIPH 1\n\n# crystal frequency\nOSCILLATOR_HZ 8000000\n\n# ChibiOS system timer\nSTM32_ST_USE_TIMER 5\n\n# bootloader starts firmware at 64k\nFLASH_RESERVE_START_KB 64\n\n# assume 2048 flash part\nFLASH_SIZE_KB 2048\n\n# order of UARTs\nSERIAL_ORDER OTG1 USART2\n\n# USB(會影響到出現第二次出現USB出現的現象、證明有進入AP_Periph主韌體)\nPA11 OTG_FS_DM OTG1\nPA12 OTG_FS_DP OTG1\n\n# USART2 for GPS\nPD5 USART2_TX USART2\nPD6 USART2_RX USART2\n\n# SPI bus\nPB2 MAG_CS  CS\nPB3 SPI1_SCK  SPI1\nPB4 SPI1_MISO SPI1\nPB5 SPI1_MOSI SPI1\nSPIDEV rm3100   SPI1 DEVID1  MAG_CS       MODE3  1*MHZ  1*MHZ\nCOMPASS RM3100 SPI:rm3100 false ROTATION_NONE\n\n# I2C\nI2C_ORDER I2C1\nPB8 I2C1_SCL I2C1 PULLUP\nPB9 I2C1_SDA I2C1 PULLUP\ndefine AP_COMPASS_PROBING_ENABLED 1\n\n# CAN bus\nPD0 CAN1_RX CAN1\nPD1 CAN1_TX CAN1\n\n# pins for SWD debugging with a STlink or black-magic probe.\nPA13 JTMS-SWDIO SWD\nPA14 JTCK-SWCLK SWD\n\n#STORAGE_FLASH_PAGE 7  # 移到 Flash 末尾\nSTORAGE_FLASH_PAGE 14  # 移到 Flash 末尾\ndefine HAL_STORAGE_SIZE 16384\n\n# no ADC pins\ndefine HAL_USE_ADC FALSE\n\ndefine GPS_MAX_RECEIVERS 1\ndefine GPS_MAX_INSTANCES 1\ndefine HAL_COMPASS_MAX_SENSORS 1\ndefine AP_PERIPH_GPS_ENABLED 1\ndefine AP_PERIPH_MAG_ENABLED 1\n# define AP_PERIPH_BARO_ENABLED 1\n# define AP_PERIPH_BUZZER_ENABLED 1  \n# define AP_PERIPH_RC_OUT_ENABLED 1\ndefine AP_PERIPH_NOTIFY_ENABLED 1\n\n# GPS on lst port\ndefine HAL_PERIPH_GPS_PORT_DEFAULT 1\n\n\n# define HAL_SERIAL_ESC_COMM_ENABLED 1\n# define HAL_RCIN_THREAD_ENABLED 1\ndefine HAL_SCHEDULER_LOOP_DELAY_ENABLED 1\ndefine HAL_MONITOR_THREAD_ENABLED 1\n\n# LEDs\nPC7  LED_R1 OUTPUT  HIGH GPIO(0)\nPC8  LED_G1 OUTPUT  HIGH GPIO(1)\nPC9  LED_B1 OUTPUT  HIGH GPIO(2)\n\ndefine AP_NOTIFY_GPIO_LED_RGB_RED_PIN 0\ndefine AP_NOTIFY_GPIO_LED_RGB_GREEN_PIN 1\ndefine AP_NOTIFY_GPIO_LED_RGB_BLUE_PIN 2\ndefine AP_NOTIFY_GPIO_LED_RGB_ENABLED 1\n\n# 顯示Serial相關參數\ndefine HAL_PERIPH_SHOW_SERIAL_MANAGER_PARAMS 1\n\n# Ethernet\nPA1  ETH_RMII_REF_CLK   ETH1\nPA2  ETH_MDIO           ETH1\nPA7  ETH_RMII_CRS_DV    ETH1\nPB11 ETH_RMII_TX_EN     ETH1\nPB12 ETH_RMII_TXD0      ETH1\nPB13 ETH_RMII_TXD1      ETH1\nPC1  ETH_MDC            ETH1\nPC4  ETH_RMII_RXD0      ETH1\nPC5  ETH_RMII_RXD1      ETH1\n\ndefine BOARD_PHY_ID MII_LAN8720_ID\ndefine BOARD_PHY_RMII\ndefine AP_PERIPH_NETWORKING_ENABLED 1\n# define STM32_MAC_ETH1_USE_PHY 1\ndefine BOARD_PHY_ADDRESS 5\ndefine AP_NETWORKING_MAX_INSTANCES 4\n\n\n# 強制開啟 MPU 支援\n# define HAL_USE_MPU TRUE\n\n# 指定 MPU 區域索引\ndefine STM32_NOCACHE_MPU_REGION_ETH 5\n\n# 解決 F4 沒有 Data Cache 但 Networking 代碼呼叫 Cache 清理指令的問題\ndefine SCB_CleanInvalidateDCache()\ndefine SCB_InvalidateDCache()\n\n# 解決 STM32F4 與 F7/H7 乙太網路暫存器命名不一致的問題\ndefine MACPFR MACFFR\ndefine ETH_MACPFR_PM ETH_MACFFR_PM\n\n# Change CAN Node Name\ndefine CAN_APP_NODE_NAME \"org.Taiphoon.Nari\"\n\n# Periph GCS\ndefine HAL_GCS_ENABLED 1"
+    }
+  },
+  "profileDigest": "efbabd0d6e076e19e737e6ffc990ea5b76334897cc910be61713eff5c52c63e2",
+  "recipeRef": "platform-build-v2-14",
+  "recipeSha": "3879df6fee14e9a7ca6d1e055ac1b4a827627fbe"
+}
