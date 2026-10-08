@@ -13,3 +13,5 @@ work/
 .research/
 *.pem
 *.key
+*.log
+/*.png
