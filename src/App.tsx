@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {VersionSelect} from './VersionSelect.tsx';
 import { FileTree } from './FileTree.tsx';
+import { TargetIcon } from './TargetIcon.tsx';
 import { Client, apiUrl, demoAllowed } from './client.ts';
 import { hardware, hardwareFor, hardwareLabel, type HardwareIdentity } from '../shared/hardware.ts';
 import { targets, profilesFor, targetFor, displayVersion, defaultProfileId, type FirmwareId } from '../shared/catalog.ts';
@@ -127,7 +128,7 @@ export function App() {
         <label className="field"><span>硬體版本</span><select aria-label="硬體版本" value={selectedHardware.revision} disabled={busy || Boolean(active)} onChange={e=>selectHardware({id:selectedHardware.id,revision:e.target.value})}>{hardware.find(h=>h.id===selectedHardware.id)!.revisions.map(r=><option key={r.id} value={r.id} disabled={!targets.some(t=>defaultProfileId(t.id,{id:selectedHardware.id,revision:r.id}))}>{r.name}{r.note?' · '+r.note:''}</option>)}</select></label>
       </section>
       <div className="section-heading"><div><p className="eyebrow">01 / FIRMWARE</p><h2>選擇你的韌體</h2></div><span className="subtle">{hardwareLabel(target)}</span></div>
-      <div className="targets" role="group" aria-label="韌體選擇">{compatibleTargets.map((t, i) => <button className={`target-card ${config.target === t.id ? 'selected' : ''}`} key={t.id} onClick={() => selectTarget(t.id)} disabled={busy || Boolean(active)} aria-pressed={config.target === t.id}><span className="target-top"><small>0{i + 1}</small><span>{config.target === t.id ? '● 已選擇' : t.available ? '○ 可設定' : '待接入'}</span></span><strong>{t.name}</strong><small className="target-description">{t.name} {displayVersion(config.target === t.id ? target : targetFor(t.id, defaultProfileId(t.id,selectedHardware)))}</small><span className="target-bottom">{t.id === 'am32' ? 'ESC 韌體' : target.hardware && t.id==='ardupilot' ? '周邊韌體' : '飛控韌體'} <b>↗</b></span></button>)}</div>
+      <div className="targets" role="group" aria-label="韌體選擇">{compatibleTargets.map((t, i) => <button className={`target-card ${config.target === t.id ? 'selected' : ''}`} key={t.id} onClick={() => selectTarget(t.id)} disabled={busy || Boolean(active)} aria-pressed={config.target === t.id}><span className="target-top"><small>0{i + 1}</small><span>{config.target === t.id ? '● 已選擇' : t.available ? '○ 可設定' : '待接入'}</span></span><span className="target-name"><TargetIcon id={t.id} /><strong>{t.name}</strong></span><small className="target-description">{t.name} {displayVersion(config.target === t.id ? target : targetFor(t.id, defaultProfileId(t.id,selectedHardware)))}</small><span className="target-bottom">{t.id === 'am32' ? 'ESC 韌體' : target.hardware && t.id==='ardupilot' ? '周邊韌體' : '飛控韌體'} <b>↗</b></span></button>)}</div>
       <section className="workspace">
         <div className="editor panel"><div className="panel-head"><div><p className="eyebrow">02 / CONFIGURATION</p><h2>{target.name} 設定</h2></div><span className="chip">{target.available ? hardwareLabel(target) : target.profileId ? '歷史版本' : '待接入'}</span></div>
           {platformAvailable && <VersionSelect target={config.target} selected={config.profileId} disabled={busy || Boolean(active)} onSelect={selectVersion}/>}
