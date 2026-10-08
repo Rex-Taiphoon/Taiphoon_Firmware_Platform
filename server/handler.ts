@@ -1,14 +1,18 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { seal, unseal } from './crypto.ts';
-import { GitHub, GitHubError, type Environment, type Fetch } from './github.ts';
+import { GitHub, GitHubError, installationClient, type Environment, type Fetch } from './github.ts';
 import { Platform, PlatformError } from './platform.ts';
 import { ValidationError, object, requestId } from '../shared/domain.ts';
 import { targets, profiles, targetFor } from '../shared/catalog.ts';
 import { templateData } from './templates-data.ts';
 
-type Session = { actor: string; userToken: string; expires: number };
+type Session = { actor: string; userToken?: string; userId?: string; expires: number };
 type State = { nonce: string; expires: number };
 export function createHandler(env: Environment, transport: Fetch = fetch) {
+  const allowed: Record<string, string> | undefined = env.GITHUB_ALLOWED_USERS === undefined ? undefined : JSON.parse(env.GITHUB_ALLOWED_USERS);
+  if (allowed && (typeof allowed !== 'object' || Array.isArray(allowed) || Object.entries(allowed).some(([id, actor]) => !/^[1-9]\d*$/.test(id) || typeof actor !== 'string' || !/^[A-Za-z0-9-]+$/.test(actor)))) throw new Error('Invalid GitHub whitelist');
+  if (env.GITHUB_ALLOWED_USERS !== undefined && !allowed) throw new Error('Invalid GitHub whitelist');
+  if (allowed && new Set(Object.values(allowed)).size !== Object.keys(allowed).length) throw new Error('Duplicate platform actor');
   const pages = new URL(env.PAGES_ORIGIN), api = new URL(env.API_ORIGIN);
   if (pages.origin !== env.PAGES_ORIGIN || api.origin !== env.API_ORIGIN || Buffer.from(env.SESSION_KEY, 'base64url').length !== 32) throw new Error('Invalid origin or SESSION_KEY');
   for (const url of [pages, api]) if (url.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname)) throw new Error('Production requires HTTPS');
@@ -36,29 +40,46 @@ export function createHandler(env: Environment, transport: Fetch = fetch) {
         const token = await response.json();
         if (!token.access_token) throw new PlatformError(401, 'GitHub 未核准登入');
         const user = new GitHub(token.access_token, transport), profile = await user.call('/user');
-        const repository = await user.call(`/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}`);
-        if (!repository.permissions?.push) throw new PlatformError(403, '需要平台 repository 的寫入權限');
-        const session = seal({ actor: profile.login, userToken: token.access_token, expires: Date.now() + Math.min(token.expires_in || 3600, 3600) * 1000 }, env.SESSION_KEY);
-        const payload = JSON.stringify({ type: 'taiphoon-auth', session, actor: profile.login }).replace(/</g, '\\u003c');
+        const userId = String(profile.id);
+        if (allowed && !Object.hasOwn(allowed, userId)) throw new PlatformError(403, '此 GitHub 帳號尚未取得平台編譯授權');
+        if (!allowed) {
+          const repository = await user.call(`/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}`);
+          if (!repository.permissions?.push) throw new PlatformError(403, '需要平台 repository 的寫入權限');
+        }
+        const actor = allowed ? allowed[userId] : profile.login;
+        const session = seal({ actor, ...(allowed ? { userId } : { userToken: token.access_token }), expires: Date.now() + Math.min(token.expires_in || 3600, 3600) * 1000 }, env.SESSION_KEY);
+        const payload = JSON.stringify({ type: 'taiphoon-auth', session, actor }).replace(/</g, '\\u003c');
         const nonce = randomBytes(18).toString('base64url');
         return new Response(`<!doctype html><meta charset="utf-8"><title>Taiphoon 登入</title><p>登入成功，可以關閉此視窗。</p><script nonce="${nonce}">if(window.opener){window.opener.postMessage(${payload},${JSON.stringify(pages.origin)});window.close();}</script>`, { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; base-uri 'none'; frame-ancestors 'none'`, 'Set-Cookie': `oauth_state=; HttpOnly; SameSite=Lax; Path=/auth; Max-Age=0${secure}` } });
       }
       if (origin !== pages.origin) throw new PlatformError(403, '不允許的網頁來源');
       const bearer = request.headers.get('authorization')?.match(/^Bearer ([A-Za-z0-9_-]{1,16384})$/)?.[1];
       let session: Session;
-      try { if (!bearer) throw new Error(); session = unseal<Session>(bearer, env.SESSION_KEY); if (session.expires < Date.now()) throw new Error(); } catch { throw new PlatformError(401, '請重新登入 GitHub'); }
-      // Recheck the user's permission on every call; an App installation alone is not user authorization.
-      const userRepository = await new GitHub(session.userToken, transport).call(`/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}`);
-      if (!userRepository.permissions?.push) throw new PlatformError(403, '已無平台 repository 寫入權限');
+      try { if (!bearer) throw new Error(); session = unseal<Session>(bearer, env.SESSION_KEY); if (!Number.isFinite(session.expires) || session.expires < Date.now() || typeof session.actor !== 'string') throw new Error(); } catch { throw new PlatformError(401, '請重新登入 GitHub'); }
+      if (allowed) {
+        if (!session.userId) throw new PlatformError(401, '請重新登入 GitHub');
+        if (!Object.hasOwn(allowed, session.userId) || allowed[session.userId] !== session.actor) throw new PlatformError(403, '此 GitHub 帳號已無平台編譯授權');
+      } else {
+        if (!session.userToken) throw new PlatformError(401, '請重新登入 GitHub');
+        const userRepository = await new GitHub(session.userToken, transport).call(`/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}`);
+        if (!userRepository.permissions?.push) throw new PlatformError(403, '已無平台 repository 寫入權限');
+      }
       if (url.pathname === '/session' && request.method === 'GET') return json({ actor: session.actor, repository: `${env.GITHUB_OWNER}/${env.GITHUB_REPO}`, targets, profiles });
       const template = url.pathname.match(/^\/templates\/(ardupilot|px4|betaflight|inav|am32)$/);
       if (request.method === 'GET' && template) {
         let specification;try{specification=targetFor(template[1],url.searchParams.get('profile') || undefined);}catch{throw new ValidationError('不支援的編譯版本設定');}
         return json({files:templateData[specification.templateKey || specification.id],profileId:specification.profileId,templateRevision:specification.templateRevision});
       }
-      // GitHub App user tokens are bounded by both installation scope and user permissions.
-      // No App private key or broader installation token is needed for user operations.
-      const platform = new Platform(env, new GitHub(session.userToken, transport), session.actor);
+      const github = allowed ? await installationClient(env, transport) : new GitHub(session.userToken!, transport);
+      const platform = new Platform(env, github, session.actor);
+      const asset = url.pathname.match(/^\/requests\/([^/]+)\/assets\/([1-9]\d*)$/);
+      if (asset && request.method === 'GET' && allowed) {
+        const status = await platform.status(requestId(asset[1]));
+        const verified = status.assets?.find(a => a.url === `${api.origin}/requests/${asset[1]}/assets/${asset[2]}`);
+        if (status.phase !== 'success' || !verified) throw new PlatformError(404, '找不到可下載的韌體');
+        const response = await github.asset(`${env.GITHUB_OWNER}/${env.GITHUB_REPO}`, Number(asset[2]));
+        return new Response(response.body, { headers: { ...headers, 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(verified.name)}` } });
+      }
       if (url.pathname === '/requests' && request.method === 'POST') {
         if (!request.headers.get('content-type')?.startsWith('application/json')) throw new PlatformError(415, '必須使用 JSON');
         if (Number(request.headers.get('content-length')) > 262144) throw new PlatformError(413, '設定太大');
@@ -77,6 +98,13 @@ export function createHandler(env: Environment, transport: Fetch = fetch) {
       if (request.method === 'POST' && match[2] === '/dispatch') return json(await platform.dispatch(id));
       throw new PlatformError(405, '不支援的操作');
     } catch (e) {
+      if (url.pathname === '/auth/callback') {
+        const error = e instanceof PlatformError ? e.message : 'GitHub 登入暫時無法完成，請稍後重試';
+        const payload = JSON.stringify({ type: 'taiphoon-auth-error', error }).replace(/</g, '\\u003c');
+        const nonce = randomBytes(18).toString('base64url');
+        const escaped = error.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+        return new Response(`<!doctype html><meta charset="utf-8"><title>Taiphoon 登入失敗</title><p>${escaped}</p><script nonce="${nonce}">if(window.opener){window.opener.postMessage(${payload},${JSON.stringify(pages.origin)});}</script>`, { status: e instanceof PlatformError ? e.status : 503, headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; base-uri 'none'; frame-ancestors 'none'`, 'Set-Cookie': `oauth_state=; HttpOnly; SameSite=Lax; Path=/auth; Max-Age=0${secure}` } });
+      }
       if (e instanceof PlatformError) return json({ error: e.message }, e.status);
       if (e instanceof ValidationError) return json({ error: e.message }, 422);
       if (e instanceof GitHubError) return json({ error: e.status === 403 || e.status === 429 ? 'GitHub 權限不足或 API 限流，請稍後重試' : `GitHub API 暫時無法完成操作（${e.status}）` }, 502);

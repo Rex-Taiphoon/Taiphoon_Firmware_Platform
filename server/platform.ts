@@ -132,7 +132,7 @@ export class Platform {
       const assets = manifest.assets.map(a => {
         const actual = release.assets.find((r: any) => r.name === a.name);
         if (!actual || actual.size !== a.size || (actual.digest && actual.digest !== `sha256:${a.sha256}`)) throw new ValidationError('Release 資產缺失或雜湊不符');
-        return { ...a, url: `https://github.com/${this.repository}/releases/download/${tag}/${encodeURIComponent(a.name)}` };
+        return { ...a, url: this.env.GITHUB_ALLOWED_USERS !== undefined ? `${this.env.API_ORIGIN}/requests/${id}/assets/${actual.id}` : `https://github.com/${this.repository}/releases/download/${tag}/${encodeURIComponent(a.name)}` };
       });
       return { ...status, phase: 'success', provenance: manifest, assets, releaseName:release.name || tag, releaseUrl: `https://github.com/${this.repository}/releases/tag/${tag}` };
     } catch (e) {

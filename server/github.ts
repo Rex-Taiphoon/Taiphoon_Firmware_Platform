@@ -31,12 +31,21 @@ export class GitHub {
     for (;;) { const { value, done } = await reader.read(); if (done) break; size += value.byteLength; if (size > maxBytes) { await reader.cancel(); throw new Error('Manifest too large'); } text += decoder.decode(value, { stream: true }); }
     return JSON.parse(text + decoder.decode());
   }
+  async asset(repository: string, id: number): Promise<Response> {
+    const response = await this.transport(`https://api.github.com/repos/${repository}/releases/assets/${id}`, {
+      headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/octet-stream', 'User-Agent': 'Taiphoon-Firmware-Platform', 'X-GitHub-Api-Version': '2026-03-10' }, signal: AbortSignal.timeout(20000),
+    });
+    if (!response.ok) throw new GitHubError(response.status);
+    return response;
+  }
 }
 export type Environment = {
   PAGES_ORIGIN: string; API_ORIGIN: string; GITHUB_OWNER: string; GITHUB_REPO: string;
   GITHUB_CONFIG_BRANCH: string; GITHUB_WORKFLOW_REF: string; GITHUB_WORKFLOW_FILE: string;
   GITHUB_APP_CLIENT_ID: string; GITHUB_APP_CLIENT_SECRET: string; SESSION_KEY: string;
   GITHUB_APP_ID?: string; GITHUB_APP_INSTALLATION_ID?: string; GITHUB_APP_PRIVATE_KEY?: string;
+  // JSON mapping immutable GitHub user IDs to stable platform actor names.
+  GITHUB_ALLOWED_USERS?: string;
 };
 export async function installationClient(env: Environment, transport: Fetch): Promise<GitHub> {
   if (!env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY || !env.GITHUB_APP_INSTALLATION_ID) throw new Error('Installation credentials not configured');

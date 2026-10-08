@@ -36,10 +36,12 @@ test('cache 僅轉交同次 run／attempt／SHA，沒有 fallback，發布比對
     assert.ok(!w.jobs.build.steps.find((s:any)=>s.run==='node scripts/pipeline.ts build').env?.GITHUB_TOKEN);
   }
 });
-test('Pages 只手動发布 dist，不帶韌體或憑證', () => {
+test('Pages 只手動驗證前端建置，不上傳 artifact 或部署', () => {
   const w = parse(readFileSync('.github/workflows/pages.yml', 'utf8'));
   assert.deepEqual(Object.keys(w.on), ['workflow_dispatch']); assert.equal(w.on.workflow_dispatch.inputs.confirmed.default, false);
   assert.equal(w.jobs.build.if, 'inputs.confirmed');
-  const upload = w.jobs.build.steps.find((s: any) => s.uses?.startsWith('actions/upload-artifact'));
-  assert.equal(upload.with.path, 'dist'); assert.equal(w.jobs.deploy, undefined); assert.ok(!JSON.stringify(w.jobs.build).includes('secrets.'));
+  assert.ok(!w.jobs.build.steps.some((s: any) => s.uses?.startsWith('actions/upload-artifact')));
+  assert.ok(w.jobs.build.steps.some((s: any) => s.run === 'pnpm build'));
+  assert.ok(w.jobs.build.steps.some((s: any) => s.run === 'node scripts/audit-public.mjs'));
+  assert.equal(w.jobs.deploy, undefined); assert.ok(!JSON.stringify(w.jobs.build).includes('secrets.'));
 });

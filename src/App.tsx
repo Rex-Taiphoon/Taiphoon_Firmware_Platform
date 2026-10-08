@@ -47,8 +47,21 @@ export function App() {
 
   useEffect(() => () => { client.current.dispose(); popup.current?.close(); clearTimeout(loginTimer.current); }, []);
   useEffect(() => {
+    if (!busy || !popup.current) return;
+    const timer = setInterval(() => {
+      if (popup.current?.closed) {
+        popup.current = null; clearTimeout(loginTimer.current); setBusy(false); setError('登入視窗已關閉，請重新登入');
+      }
+    }, 500);
+    return () => clearInterval(timer);
+  }, [busy]);
+  useEffect(() => {
     const listener = (e: MessageEvent) => {
-      if (!apiUrl || e.origin !== new URL(apiUrl).origin || e.source !== popup.current || e.data?.type !== 'taiphoon-auth' || typeof e.data.session !== 'string' || typeof e.data.actor !== 'string') return;
+      if (!apiUrl || e.origin !== new URL(apiUrl).origin || e.source !== popup.current) return;
+      if (e.data?.type === 'taiphoon-auth-error' && typeof e.data.error === 'string') {
+        setError(e.data.error); popup.current?.close(); popup.current = null; clearTimeout(loginTimer.current); setBusy(false); return;
+      }
+      if (e.data?.type !== 'taiphoon-auth' || typeof e.data.session !== 'string' || typeof e.data.actor !== 'string') return;
       client.current.session = e.data.session; client.current.actor = e.data.actor;
       setActor(e.data.actor); setError(''); popup.current?.close(); popup.current = null; clearTimeout(loginTimer.current); setBusy(false);
     };
@@ -136,7 +149,7 @@ export function App() {
           {saved ? <dl className="provenance"><div><dt>硬體</dt><dd>{hardwareLabel(targetFor(saved.config.target,saved.config.profileId))}</dd></div><div><dt>韌體版本</dt><dd>{displayVersion(targetFor(saved.config.target,saved.config.profileId),String(saved.config.options.vehicle || saved.config.options.variant || ''))}</dd></div><div><dt>設定版本</dt><dd><code title={saved.configSha}>{saved.configSha.slice(0, 12)}</code></dd></div><div><dt>原始碼版本</dt><dd><code title={saved.sourceSha}>{saved.sourceSha.slice(0, 12)}</code></dd></div><div><dt>請求識別碼</dt><dd><code>{saved.requestId}</code></dd></div>{status?.runId && <div><dt>Actions 工作</dt><dd>#{status.runId} · attempt {status.runAttempt || 1}</dd></div>}</dl> : <div className="empty-state"><span>↗</span><p>每次編譯，都是一份可追溯的版本。</p></div>}
           {dirty && <p className="note">編輯中的設定尚未保存；下方結果仍使用已保存版本。</p>}{status?.runUrl && <a className="text-link" href={status.runUrl} target="_blank" rel="noreferrer">查看這次 Actions 紀錄 ↗</a>}
           {status?.provenance?.releaseTag && <p className="result-name">{status.releaseName || status.provenance.releaseTag}</p>}{status?.provenance?.firmwareVersion && <p className="note">{targetFor(status.provenance.target).name} {status.provenance.displayFirmwareVersion || status.provenance.firmwareVersion} · {status.provenance.variant} · {status.provenance.buildDate}</p>}
-          {status?.phase === 'success' && status.assets?.map(a => <div className="download" key={a.name}><div><strong>{a.name}</strong>{a.sha256 && <small title={a.sha256}>SHA-256 {a.sha256.slice(0, 16)}…</small>}</div><a href={a.url} download={demo ? a.name : undefined} target={demo ? undefined : '_blank'} rel="noreferrer">下載 ↓</a></div>)}
+          {status?.phase === 'success' && status.assets?.map(a => <div className="download" key={a.name}><div><strong>{a.name}</strong>{a.sha256 && <small title={a.sha256}>SHA-256 {a.sha256.slice(0, 16)}…</small>}</div>{!demo && a.url?.startsWith(`${apiUrl}/requests/`) ? <button className="secondary" disabled={busy} onClick={() => action(() => client.current.download(a.url!,a.name))}>下載 ↓</button> : <a href={a.url} download={demo ? a.name : undefined} target={demo ? undefined : '_blank'} rel="noreferrer">下載 ↓</a>}</div>)}
           {status?.releaseUrl && <a className="text-link" href={status.releaseUrl} target="_blank" rel="noreferrer">查看 Release 與完整版本資訊 ↗</a>}
           {pollError && <div className="error" role="alert">狀態查詢暫停：{pollError}<button onClick={() => { setPollTick(t => t + 1); setPollError(''); }}>重新查詢</button></div>}
           {!demo && <details className="restore"><summary>找回已保存的工作</summary><label>請求識別碼<input value={restoreId} onChange={e => setRestoreId(e.target.value)} placeholder="UUID" /></label><button className="secondary" disabled={!authenticated || busy || Boolean(active)} onClick={restore}>讀取工作</button></details>}

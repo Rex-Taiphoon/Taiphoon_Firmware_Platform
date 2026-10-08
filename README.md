@@ -10,7 +10,7 @@ React + TypeScript 的 Taiphoon 多硬體線上配置與雲端編譯平台。正
 - [公開前端資產 repository](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Pages)：僅前端、品牌圖、部署 workflow。
 - [私人平台 repository](https://github.com/Rex-Taiphoon/Taiphoon_Firmware_Platform)：API、受控模板、配置快照、Actions、Releases。
 - API：`https://taiphoon-firmware-api.taiphoon-firmware-platform.workers.dev`，Cloudflare Workers。
-- GitHub App：`taiphoon-firmware-platform`。使用者已安裝並確認登入與保存配置成功；限定私人平台 repo，使用者也須有該 repo 寫入權限。
+- GitHub App：`taiphoon-firmware-platform`。帳號白名單模式由後端 App 代為操作私人平台 repo，使用者不需要 repo 寫入權限；授權與部署必要設定見 [account-authorization.md](docs/account-authorization.md)。
 
 部署及雲端驗證結果見 [verification.md](docs/verification.md)。編譯通過不等同硬體刷寫／飛行驗收。
 
@@ -32,10 +32,10 @@ React + TypeScript 的 Taiphoon 多硬體線上配置與雲端編譯平台。正
 
 ## 使用
 
-1. 在 Pages 使用 GitHub 登入，API 重新檢查 repository 寫入資格，才讀取私人基礎配置。
+1. 在 Pages 使用 GitHub 登入，API 重新檢查帳號白名單資格，才讀取私人基礎配置。
 2. 選韌體與版本，在可展開的 Morakot 目錄樹選取檔案並編輯，調整編譯參數；按「保存設定」取得不可變 request ID 與 config commit SHA。
 3. 按「開始雲端編譯並發布」，查看排隊、驗證、編譯、發布、成功或失敗及 Actions 紀錄。
-4. 成功後只有通過版本與雜湊核對的資產可下載。私人 Release 需要在瀏覽器登入有存取權的 GitHub 帳號。
+4. 成功後只有通過版本與雜湊核對的資產可下載。白名單使用者透過平台下載按鈕取得自己的韌體；GitHub 原生 Actions／Release 連結仍需 repo 存取權。
 
 重新整理後需再次登入，以網址 request 或「找回已保存的工作」讀取。session 與私人配置不寫入 localStorage。修改設定須另存版本；已送出工作使用原快照。逾時不自動重送，會以 request ID 查回，避免重複工作。
 
@@ -45,7 +45,7 @@ React + TypeScript 的 Taiphoon 多硬體線上配置與雲端編譯平台。正
 
 GitHub App 只需 Contents／Actions Read and write 與必要 Metadata read，不需要 Administration、Workflows、Pages 或組織權限。安裝時選 **Only select repositories**，只勾 `Taiphoon_Firmware_Platform`。
 
-Callback：`https://taiphoon-firmware-api.taiphoon-firmware-platform.workers.dev/auth/callback`。Webhook 停用。API 使用 GitHub App 的 user access token，權限同時受 App 安裝範圍與使用者權限限制，不需要保存 App 私鑰或 installation token。
+Callback：`https://taiphoon-firmware-api.taiphoon-firmware-platform.workers.dev/auth/callback`。Webhook 停用。App 設為 Public 以允許其他帳號授權登入；repository 維持私人。白名單模式只用 user access token 取得身分，後端用限定單一 repo 的 installation token 執行保存與編譯。App 私鑰存於 Workers secrets，installation token 不傳入前端。未設定白名單變數的舊部署仍使用 user token 與 repo 寫入資格。
 
 `wrangler.jsonc` 存非秘密設定。`GITHUB_APP_CLIENT_SECRET` 與 32-byte 隨機 `SESSION_KEY` 只存 Cloudflare Workers secrets；本次建立時直接寫入秘密管理，未寫入 repo。OAuth state 綁定 HttpOnly／SameSite=Lax／Secure cookie；AES-GCM 加密平台 session 只在前端記憶體保存，最長一小時，每次操作重新檢查使用者資格。不要紀錄 bearer、Authorization、cookie、callback query、request body 或原始憑證錯誤。
 

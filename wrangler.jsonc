@@ -14,7 +14,10 @@
     "GITHUB_CONFIG_BRANCH": "main",
     "GITHUB_WORKFLOW_REF": "platform-build-v2-14",
     "GITHUB_WORKFLOW_FILE": "firmware.yml",
-    "GITHUB_APP_CLIENT_ID": "Iv23liV3ceZiJQO10SpK"
+    "GITHUB_APP_CLIENT_ID": "Iv23liV3ceZiJQO10SpK",
+    "GITHUB_ALLOWED_USERS": "{\"219089883\":\"Rex-Taiphoon\",\"71856163\":\"Qqww4599\"}",
+    "GITHUB_APP_ID": "5174403",
+    "GITHUB_APP_INSTALLATION_ID": "167492127"
   },
   "account_id": "98d6d00a213f00c6b134ac23e3c77854"
 }

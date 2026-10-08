@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmed:
-        description: Build public frontend assets for the separate Pages repository
+        description: Validate the public frontend build for the separate Pages repository
         required: true
         default: false
         type: boolean
@@ -33,9 +33,3 @@ jobs:
           VITE_API_URL: ${{ vars.PLATFORM_API_URL }}
           PAGES_BASE_PATH: /Taiphoon_Firmware_Pages/
       - run: node scripts/audit-public.mjs
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: frontend-pages
-          path: dist
-          retention-days: 1
-          if-no-files-found: error

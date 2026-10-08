@@ -26,6 +26,20 @@ export class Client {
     this.records.set(id, { saved }); return saved;
   }
   async saved(id: string): Promise<SavedRequest> { return this.call(`/requests/${requestId(id)}`); }
+  async download(url: string, name: string): Promise<void> {
+    const destination = new URL(url);
+    const api = new URL(apiUrl);
+    if (destination.origin !== api.origin || !/^\/requests\/[a-f0-9-]+\/assets\/[1-9]\d*$/.test(destination.pathname) || destination.search || destination.hash) throw new Error('無效的下載網址');
+    const response = await fetch(destination, { headers: { Authorization: `Bearer ${this.session}` }, cache: 'no-store', signal: AbortSignal.timeout(120000) });
+    if (!response.ok) {
+      if (response.status === 401) { this.session = ''; this.actor = ''; }
+      throw new Error((await response.json()).error || '韌體下載失敗');
+    }
+    const blobUrl = URL.createObjectURL(await response.blob());
+    const link = document.createElement('a'); link.href = blobUrl; link.download = name;
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  }
   async dispatch(id: string): Promise<BuildStatus> {
     if (!this.demo) return this.call(`/requests/${requestId(id)}/dispatch`, 'POST');
     const r = this.records.get(id); if (!r) throw new Error('請先保存設定'); r.started ??= Date.now(); return this.status(id);
